@@ -18,6 +18,7 @@
             margin: 0;
             padding: 0;
             text-align: center;
+            color: #fff;
             background-color: #000;
             background-image: url('images/bg.jpg');
             background-position: 50% 50%;
@@ -43,6 +44,11 @@
         <div class="game-area" id="game-area">
             <canvas id="game-canvas"></canvas>
         </div>
+        <div class="game-info">
+            <h1>The Trial of Tim</h1>
+            <p>Move with arrow keys, attack with spacebar.</p>
+        </div>
+        <?php include_once('../../lib/includes/opalgames-footer.php'); ?>
         <script type='text/javascript' src='scripts/game.js'></script>
     </body>
 </html>

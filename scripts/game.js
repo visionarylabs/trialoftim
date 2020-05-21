@@ -1,5 +1,5 @@
 /**
-    Levolon State and Rules
+    The Trial of Tim State and Rules
     * also requires
     * quest/tool
     * quest/render
@@ -97,6 +97,8 @@ var attackReady = true;
 var points = 0;
 
 // Game objects
+var monsters = [];
+
 var hero = {
     speed: 256, // movement in pixels per second
     x: 0,
@@ -107,15 +109,7 @@ var hero = {
     canAttack : true,
     lastDirection : null
 };
-var monster = {
-    x: 0,
-    y: 0,
-    velX : 0,
-    velY : 0,
-    speed : 150,
-    status : 'alive', //alive, dead
-    frame : 1 //the frame of the animation, 1 or 2, 3 for death
-};
+
 var sword = {
     x:0,
     y:0,
@@ -127,34 +121,46 @@ var sword = {
 var keysDown = {};
 
 addEventListener("keydown", function (e) {
+    e.preventDefault();
     keysDown[e.keyCode] = true;
 }, false);
 
 addEventListener("keyup", function (e) {
+    e.preventDefault();
     delete keysDown[e.keyCode];
 }, false);
 
 // Reset the monster when the player catches a monster
-var resetMonster = function () {
+var resetGame = function () {
     //set the monster
-    monster.status = 'alive';
-    monster.frame = 1;
+    monsters = [];
+    var monster = makeMonster();
+    monsters.push(monster);
+};
+
+var makeMonster = function(){
+    var monster = {
+        x: 0,
+        y: 0,
+        velX : 0,
+        velY : 0,
+        speed : 150,
+        status : 'alive', //alive, dead
+        frame : 1 //the frame of the animation, 1 or 2, 3 for death
+    };
     monster.x = ranomdNumberRange(1,15) * options.grid.tileSize - options.grid.tileSize;
     monster.y = ranomdNumberRange(1,10) * options.grid.tileSize - options.grid.tileSize;
-    console.log(monster.x);
-    console.log(monster.y);
-};
+    return monster;
+}
 
 var resetHero = function () {
     hero.x = ranomdNumberRange(1,15) * options.grid.tileSize - options.grid.tileSize;
     hero.y = ranomdNumberRange(1,10) * options.grid.tileSize - options.grid.tileSize;
-    console.log(hero.x);
-    console.log(hero.y);
 }
 
 var init = function(){
     resetHero();
-    resetMonster();
+    resetGame();
     main();
 };
 
@@ -164,24 +170,6 @@ var ranomdNumberRange = function(min, max) { // min and max included
 
 // Update game objects
 var update = function (modifier) {
-    
-    //set ticks
-    if( (then - lastTick) > (250) ){
-        lastTick = then;
-        ticks++;
-        
-        //animate monster frame
-        if(monster.frame == 1){
-            monster.frame = 2;
-        }else if(monster.frame == 2){
-            monster.frame = 1;
-        }
-        
-        if(monster.status == 'dead'){
-            resetMonster();
-        }
-        
-    }
     
     if (38 in keysDown) { // Player holding up
         hero.y -= hero.speed * modifier;
@@ -215,27 +203,6 @@ var update = function (modifier) {
     }
     if(then - hero.lastAttack > ( 500 ) ){
         hero.canAttack = true;
-    }
-    
-    if(monster.status == 'alive'){
-        //switch monster movement
-        var monsterSwitchChance = ranomdNumberRange(1,300);
-        if(monsterSwitchChance < 2){
-            monster.velX = 1;
-        }else if(monsterSwitchChance < 4){
-            monster.velX = -1;
-        }else if(monsterSwitchChance < 6){
-            monster.velY = 1;
-        }else if(monsterSwitchChance < 8){
-            monster.velY = -1;
-        }else if(monsterSwitchChance < 10){
-            monster.velY = 0;
-        }else if(monsterSwitchChance < 12){
-            monster.velY = 0;
-        }
-        //move the monster
-        monster.x += monster.velX * monster.speed * modifier;
-        monster.y += monster.velY * monster.speed * modifier;
     }
     
     // SWORD
@@ -278,63 +245,122 @@ var update = function (modifier) {
         sword.spriteY = hero.y;
     }
     
-    // hero touching monster? Hero Dies!
-    if (
-        hero.x <= (monster.x + options.grid.tileSize)
-        && monster.x <= (hero.x + options.grid.tileSize)
-        && hero.y <= (monster.y + options.grid.tileSize)
-        && monster.y <= (hero.y + options.grid.tileSize)
-        && monster.status == 'alive'
-    ) {
-        points = 0;
-        resetHero();
-        resetMonster();
-    }
-    
-    // ATTACK HITS // Monster Dies
-    if (
-        hero.attack == true
-        && sword.x <= (monster.x + options.grid.tileSize)
-        && monster.x <= (sword.x + options.grid.tileSize)
-        && sword.y <= (monster.y + options.grid.tileSize)
-        && monster.y <= (sword.y + options.grid.tileSize)
-        && monster.status == 'alive'
-    ) {
-        ++points;
-        monster.frame = 3; //3 = death frame
-        monster.status = 'dead';
-    }
-
     // stop hero on edge
-    if (hero.x >= canvas.width - heroImage.width) {
-        hero.x = canvas.width - heroImage.width;
+    if (hero.x >= canvas.width - options.grid.tileSize) {
+        hero.x = canvas.width - options.grid.tileSize;
     }
     else if (hero.x <= 0) {
         hero.x = 0;
     }
-    if (hero.y >= canvas.height - heroImage.height) {
-        hero.y = canvas.height - heroImage.height;
+    if (hero.y >= canvas.height - options.grid.tileSize) {
+        hero.y = canvas.height - options.grid.tileSize;
     }
     else if (hero.y <= 0) {
         hero.y = 0;
     }
     
-    // turn monster on edge
-    if (monster.x >= canvas.width - monsterImage.width) {
-        monster.x = canvas.width - monsterImage.width;
-        monster.velX = -1;
-    }
-    else if (monster.x <= 0) {
-        monster.x = 0;
-        monster.velX = 1;
-    }
-    if (monster.y >= canvas.height - monsterImage.height) {
-        monster.y = canvas.height - monsterImage.height;
-        monster.velY = -1;
-    }
-    else if (monster.y <= 0) {
-        monster.y = 0;
-        monster.velY = 1;
+    /* MONSTER UPDATE LOOP */
+    // move enemies
+    var monsterCheckNum = 0;
+    if(monsters.length <= 0) return;
+    for(monsterCheckNum = monsters.length - 1; monsterCheckNum >= 0; monsterCheckNum--){
+        var monster = monsters[monsterCheckNum];
+        if(monster.status == 'alive'){
+            //switch monster movement
+            var monsterSwitchChance = ranomdNumberRange(1,300);
+            if(monsterSwitchChance < 2){
+                monster.velX = 1;
+            }else if(monsterSwitchChance < 4){
+                monster.velX = -1;
+            }else if(monsterSwitchChance < 6){
+                monster.velY = 1;
+            }else if(monsterSwitchChance < 8){
+                monster.velY = -1;
+            }else if(monsterSwitchChance < 10){
+                monster.velY = 0;
+            }else if(monsterSwitchChance < 12){
+                monster.velY = 0;
+            }
+            //move the monster
+            monster.x += monster.velX * monster.speed * modifier;
+            monster.y += monster.velY * monster.speed * modifier;
+        }
+        
+        // ATTACK HITS // Monster Dies
+        if (
+            hero.attack == true
+            && sword.x <= (monster.x + options.grid.tileSize)
+            && monster.x <= (sword.x + options.grid.tileSize)
+            && sword.y <= (monster.y + options.grid.tileSize)
+            && monster.y <= (sword.y + options.grid.tileSize)
+            && monster.status == 'alive'
+        ) {
+            ++points;
+            monster.frame = 3; //3 = death frame
+            monster.status = 'dead';
+        }
+        
+        // turn monster on edge
+        if (monster.x >= canvas.width - monsterImage.width) {
+            monster.x = canvas.width - monsterImage.width;
+            monster.velX = -1;
+        }
+        else if (monster.x <= 0) {
+            monster.x = 0;
+            monster.velX = 1;
+        }
+        if (monster.y >= canvas.height - monsterImage.height) {
+            monster.y = canvas.height - monsterImage.height;
+            monster.velY = -1;
+        }
+        else if (monster.y <= 0) {
+            monster.y = 0;
+            monster.velY = 1;
+        }
+        
+        // hero touching monster? Hero Dies!
+        if (
+            hero.x <= (monster.x + options.grid.tileSize)
+            && monster.x <= (hero.x + options.grid.tileSize)
+            && hero.y <= (monster.y + options.grid.tileSize)
+            && monster.y <= (hero.y + options.grid.tileSize)
+            && monster.status == 'alive'
+        ) {
+            points = 0;
+            resetHero();
+            resetGame();
+            return;
+        }
+
+    }//END MONSTER CHECK LOOP
+
+    //set ticks
+    if( (then - lastTick) > (250) ){
+        lastTick = then;
+        ticks++;
+        //monster tick loop
+        for(i=0;i<monsters.length;i++){
+            //animate monster frame
+            if(monsters[i].frame == 1){
+                monsters[i].frame = 2;
+            }else if(monsters[i].frame == 2){
+                monsters[i].frame = 1;
+            }
+        }
+        //clean up destoryed monsters
+        var addMonsters = false;
+        for(monsterCheckNum = monsters.length - 1; monsterCheckNum >= 0; monsterCheckNum--){
+            if(monsters[monsterCheckNum].status == 'dead'){
+                monsters.splice(monsterCheckNum,1);
+                addMonsters = true;
+            }
+        }    
+        if(addMonsters == true){
+            var monster = makeMonster();
+            monsters.push(monster);
+            var monster = makeMonster();
+            monsters.push(monster);
+        }
     }
 
 };
@@ -413,24 +439,29 @@ var render = function () {
     var spriteY = 0;
     
     //MONSTER
-    //Testing square for monster
-    /*
-        ctx.beginPath();
-        ctx.rect(monster.x, monster.y, 64, 64);
-        ctx.fillStyle = "purple";
-        ctx.fill();
-    */
-    spriteX = (monster.frame - 1) * options.grid.tileSize;
-    spriteY = 0;
-    if (monsterReady) {
-        ctx.drawImage(
-            monsterImage,                                   //image
-            spriteX, spriteY,                               //image in slice
-            options.grid.tileSize, options.grid.tileSize,   //size of slice
-            monster.x, monster.y,                           //image pos
-            options.grid.tileSize, options.grid.tileSize    //size of image
-        );
-    }
+    //MONSTER RENDER LOOP
+    //draw monsters
+    for(i=0;i<monsters.length;i++){
+        //Testing square for monster
+        /*
+            ctx.beginPath();
+            ctx.rect(monster.x, monster.y, 64, 64);
+            ctx.fillStyle = "purple";
+            ctx.fill();
+        */
+        spriteX = (monsters[i].frame - 1) * options.grid.tileSize;
+        spriteY = 0;
+        if (monsterReady) {
+            ctx.drawImage(
+                monsterImage,                                   //image
+                spriteX, spriteY,                               //image in slice
+                options.grid.tileSize, options.grid.tileSize,   //size of slice
+                monsters[i].x, monsters[i].y,                           //image pos
+                options.grid.tileSize, options.grid.tileSize    //size of image
+            );
+        }
+    }//end monster render loop
+        
     
     //ATTACK
     spriteX = 0;

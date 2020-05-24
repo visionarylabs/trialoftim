@@ -9,4 +9,4 @@
 3. sword anim / attack anim
 
 #todo
-1. make an array of monsters with a monster factory
+1. make an overworld with side scrolling

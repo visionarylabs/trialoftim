@@ -1,8 +1,9 @@
 /**
-    The Trial of Tim State and Rules
-    * also requires
-    * quest/tool
-    * quest/render
+    The Trial of Tim
+    Javascript Game Demo
+    Top-Down Adventure World Game
+    @author Ben Borkowski
+    @publisher Opal Games
 **/
 
 var options = {};
@@ -18,6 +19,10 @@ options.grid.height = 10;
 var state = {};
 var ticks = 0;
 var lastTick = 0;
+var world = null;
+
+var attackReady = true;
+var points = 0;
 
 /*create the canvas*/
 //var canvas = document.createElement("canvas");
@@ -60,6 +65,10 @@ if(options.resizeGame == true){
     window.addEventListener('orientationchange', resizeGame, false);
 }
 
+////////////
+// * GAME RESOURCES / IMAGES
+////////////
+
 // Background image
 var bgReady = false;
 var bgImage = new Image();
@@ -76,7 +85,7 @@ heroImage.onload = function () {
 };
 heroImage.src = "images/hero-skin-sprite.png";
 
-// Sword
+// Sword image
 var swordReady = false;
 var swordImage = new Image();
 swordImage.onload = function () {
@@ -92,11 +101,10 @@ monsterImage.onload = function () {
 };
 monsterImage.src = "images/monster-001-sprite.png";
 
-//attack
-var attackReady = true;
-var points = 0;
+////////////
+// * GAME OBJECTS
+////////////
 
-// Game objects
 var monsters = [];
 
 var hero = {
@@ -117,7 +125,44 @@ var sword = {
     h: 10
 }
 
-// Handle keyboard controls
+////////////
+// * WORLD AND SCREENS
+////////////
+
+const worldFactory = function(cols,rows) {
+    var world = [];
+    var screen = null;
+    var iCol = 0;
+    var iRow = 0;
+    var num = 0;
+    var id = 0;
+    for( iRow; iRow < rows; iRow++ ) {
+        for( iCol; iCol < cols; iCol++ ) {
+            num++;
+            screen = screenFactory( id, num, iCol, iRow );
+            world.push(screen);
+            id++;
+        }
+        iCol = 0;
+    }
+    return world;
+}
+
+const screenFactory = function(id,num,col,row) {
+    var screen = {
+        id : id,
+        num : num,
+        col : col,
+        row : row,
+        isCurrent : false
+    };
+    return screen;
+};
+
+////////////
+// * KEYBOARD CONTROLS
+////////////
+
 var keysDown = {};
 
 addEventListener("keydown", function (e) {
@@ -130,8 +175,19 @@ addEventListener("keyup", function (e) {
     delete keysDown[e.keyCode];
 }, false);
 
-// Reset the monster when the player catches a monster
-var resetGame = function () {
+////////////
+// * GAME HELPER FUNCTIONS
+////////////
+
+var ranomdNumberRange = function(min, max) { // min and max included
+  return Math.floor(Math.random() * (max - min + 1) + min);
+}
+
+var cl = function(msg){
+    console.log(msg);
+}
+
+var resetMonster = function () {
     //set the monster
     monsters = [];
     var monster = makeMonster();
@@ -158,34 +214,131 @@ var resetHero = function () {
     hero.y = ranomdNumberRange(1,10) * options.grid.tileSize - options.grid.tileSize;
 }
 
+//see if there is a screen on the world map to move to
+//return the screen id
+var checkScreen = function( direction ){
+    console.log('check screen ' + direction);
+    var i = 0;
+    var screenNum = null;
+    var loopLength = world.length;
+    var currentScreenId = getCurrentScreenId();
+    var currentScreen = world[currentScreenId];
+    for(i = 0; i < loopLength; i++) {
+        screenNum = i + 1;
+        switch(direction){
+            case 'down':
+                if( 
+                    currentScreen.col == world[i].col &&
+                    currentScreen.row == world[i].row - 1
+                ){
+                    console.log('found adjacent down screen ' + screenNum);
+                    return screenNum;
+                }
+            break;
+            case 'right':
+                if( 
+                    currentScreen.row == world[i].row &&
+                    currentScreen.col == world[i].col - 1
+                ){
+                    console.log('found adjacent right screen ' + screenNum);
+                    return screenNum;
+                }
+            break;
+            case 'up':
+                if( 
+                    currentScreen.col == world[i].col &&
+                    currentScreen.row == world[i].row + 1
+                ){
+                    console.log('found adjacent up screen ' + screenNum);
+                    return screenNum;
+                }
+            break;
+            case 'left':
+                if( 
+                    currentScreen.row == world[i].row &&
+                    currentScreen.col == world[i].col + 1
+                ){
+                    console.log('found adjacent left screen ' + screenNum);
+                    return screenNum;
+                }
+            break;
+        }
+    }
+}
+var moveScreen = function( moveToScreenId, direction ){
+    moveToScreenId = moveToScreenId -1; //todo fix num vs id for 0 check
+    console.log('move to screen ' + moveToScreenId + ' ' + direction);
+    var currentScreenId = getCurrentScreenId();
+    switch(direction){
+        case 'down':
+            hero.y = 0;
+        break;
+        case 'right':
+            hero.x = 0;
+        break;
+        case 'up':
+            hero.y = canvas.height - options.grid.tileSize;
+        break;
+        case 'left':
+            hero.x = canvas.width - options.grid.tileSize;
+        break;        
+    }
+    world[currentScreenId].isCurrent = false;
+    world[moveToScreenId].isCurrent = true;
+    resetMonster();
+}
+var getCurrentScreenId = function(){
+    var i = 0;
+    var loopLength = world.length;
+    for(i = 0; i < loopLength; i++) {
+        if( world[i].isCurrent === true ){
+            return i;
+        }
+    }
+}
+
+////////////
+// * Initialize the Game
+////////////
+
 var init = function(){
+    world = new worldFactory(3,3);
+    world[7].isCurrent = true;
+    console.log(world);
     resetHero();
-    resetGame();
+    resetMonster();
     main();
 };
 
-var ranomdNumberRange = function(min, max) { // min and max included 
-  return Math.floor(Math.random() * (max - min + 1) + min);
-}
+////////////
+// * UPDATE
+////////////
 
-// Update game objects
 var update = function (modifier) {
-    
-    if (38 in keysDown) { // Player holding up
-        hero.y -= hero.speed * modifier;
-        hero.lastDirection = 'u';
+
+    if (38 in keysDown || 87 in keysDown) { // Player holding up or w
+        if(hero.attacking == false){
+            hero.y -= hero.speed * modifier;
+            hero.lastDirection = 'u';
+        }
     }
-    if (40 in keysDown) { // Player holding down
-        hero.y += hero.speed * modifier;
-        hero.lastDirection = 'd';
+    if (40 in keysDown || 83 in keysDown) { // Player holding down or s
+        if(hero.attacking == false){
+            hero.y += hero.speed * modifier;
+            hero.lastDirection = 'd';
+        }
     }
-    if (37 in keysDown) { // Player holding left
-        hero.x -= hero.speed * modifier;
-        hero.lastDirection = 'l';
+    if (37 in keysDown || 65 in keysDown) { // Player holding left or a
+        if(hero.attacking == false){
+            hero.x -= hero.speed * modifier;
+            hero.lastDirection = 'l';
+        }
     }
-    if (39 in keysDown) { // Player holding right
-        hero.x += hero.speed * modifier;
-        hero.lastDirection = 'r';
+    if (39 in keysDown || 68 in keysDown) { // Player holding right or d
+        if(hero.attacking == false){
+            hero.x += hero.speed * modifier;
+            hero.lastDirection = 'r';
+        }
     }
     if (32 in keysDown) { // Player holding space
         if(hero.attacking == false && hero.canAttack == true){
@@ -195,7 +348,7 @@ var update = function (modifier) {
             hero.canAttack = false;
         }
     }
-    
+
     //attack check
     if(then - hero.lastAttack > ( 300) ){
         hero.attack = false;
@@ -204,14 +357,14 @@ var update = function (modifier) {
     if(then - hero.lastAttack > ( 500 ) ){
         hero.canAttack = true;
     }
-    
+
     // SWORD
     var swordLong = (options.grid.tileSize / 3) * 2;
         swordLong = 64;
     var swordShort = options.grid.tileSize / 4;
     var halfTile = options.grid.tileSize / 2;
     var eigthTile = options.grid.tileSize / 8;
-    
+
     if(hero.lastDirection == 'u'){
         sword.h = swordLong;
         sword.w = swordShort;
@@ -244,21 +397,41 @@ var update = function (modifier) {
         sword.spriteX = hero.x + options.grid.tileSize;
         sword.spriteY = hero.y;
     }
-    
-    // stop hero on edge
-    if (hero.x >= canvas.width - options.grid.tileSize) {
-        hero.x = canvas.width - options.grid.tileSize;
+
+    /**
+        HERO ON EDGE
+        MOVE TO SCREEN IF POSSILBE
+    **/
+    // X Edge
+    var moveToScreenId = null;
+    if (hero.x >= canvas.width - options.grid.tileSize) {  //right edge
+        if( moveToScreenId = checkScreen('right') ){
+            moveScreen(moveToScreenId,'right');
+        }else{
+            hero.x = canvas.width - options.grid.tileSize;
+        }
+    }else if (hero.x <= 0) { //left edge
+        if( moveToScreenId = checkScreen('left') ){
+            moveScreen(moveToScreenId,'left');
+        }else{
+            hero.x = 0;
+        }
     }
-    else if (hero.x <= 0) {
-        hero.x = 0;
+    // Y Edge
+    if (hero.y >= canvas.height - options.grid.tileSize) { //bottom edge
+        if( moveToScreenId = checkScreen('down') ){
+            moveScreen(moveToScreenId,'down');
+        }else{
+            hero.y = canvas.height - options.grid.tileSize;
+        }
+    }else if (hero.y <= 0) { //top edge
+        if( moveToScreenId = checkScreen('up') ){
+            moveScreen(moveToScreenId,'up');
+        }else{
+            hero.y = 0;
+        }
     }
-    if (hero.y >= canvas.height - options.grid.tileSize) {
-        hero.y = canvas.height - options.grid.tileSize;
-    }
-    else if (hero.y <= 0) {
-        hero.y = 0;
-    }
-    
+
     /* MONSTER UPDATE LOOP */
     // move enemies
     var monsterCheckNum = 0;
@@ -285,7 +458,7 @@ var update = function (modifier) {
             monster.x += monster.velX * monster.speed * modifier;
             monster.y += monster.velY * monster.speed * modifier;
         }
-        
+
         // ATTACK HITS // Monster Dies
         if (
             hero.attack == true
@@ -299,7 +472,7 @@ var update = function (modifier) {
             monster.frame = 3; //3 = death frame
             monster.status = 'dead';
         }
-        
+
         // turn monster on edge
         if (monster.x >= canvas.width - monsterImage.width) {
             monster.x = canvas.width - monsterImage.width;
@@ -317,7 +490,7 @@ var update = function (modifier) {
             monster.y = 0;
             monster.velY = 1;
         }
-        
+
         // hero touching monster? Hero Dies!
         if (
             hero.x <= (monster.x + options.grid.tileSize)
@@ -328,7 +501,7 @@ var update = function (modifier) {
         ) {
             points = 0;
             resetHero();
-            resetGame();
+            resetMonster();
             return;
         }
 
@@ -354,7 +527,8 @@ var update = function (modifier) {
                 monsters.splice(monsterCheckNum,1);
                 addMonsters = true;
             }
-        }    
+        }
+        //add more monsters
         if(addMonsters == true){
             var monster = makeMonster();
             monsters.push(monster);
@@ -365,84 +539,27 @@ var update = function (modifier) {
 
 };
 
-// * STATE // FACTORIES
-var gameFactory = function () {
-    const actorFactory = function (spriteType,slug,name,tile) {
-        var actor = {
-            slug : slug,
-            name : name,
-            spriteType : spriteType,
-            stats : {},
-            items : [],
-            ui : {},
-        };
-        actor.ui = setUi(0,0,48,12,'black',1,42,7);
-        actor.stats = {
-            strength : 10,
-            toughness : 2,
-            intelligence : 1,
-            will : 1,
-            diplomacy : 1,
-            health : 20,
-        }
-        switch(spriteType){
-            case 'hero':
-                actor.ui.size = {w:48,h:12};
-                actor.ui.color = 'blue';
-                actor.ui.image.src = './images/wq-01.png';
-            break;
-            case 'monster':
-                actor.ui.size = {w:48,h:12};
-                actor.ui.color = 'red';
-                actor.ui.image.src = './images/wq-02.png';
-                switch(slug){
-                    case 'rat':
-                    actor.ui.image.src = './images/wq-m-01.png';
-                    actor.stats.strength = 10;
-                    actor.stats.thoughness = 2;
-                    actor.stats.health = 10;
-                    break;
-                    case 'fiend':
-                    actor.ui.image.src = './images/wq-m-02.png';
-                    actor.stats.strength = 30;
-                    actor.stats.thoughness = 5;
-                    actor.stats.health = 40;
-                    break;
-                    case 'blob':
-                    actor.ui.image.src = './images/wq-m-03.png';
-                    actor.stats.strength = 20;
-                    actor.stats.thoughness = 8;
-                    actor.stats.health = 30;
-                    break;
-                }
-            break;
-        }
-        return actor;
-    }
-}
-
 ////////////
 // * RENDER
 ////////////
 
-// Draw everything
 var render = function () {
+
+    //BG RENDER
     if (bgReady) {
         ctx.drawImage(bgImage, 0, 0);
         var ptrn = ctx.createPattern(bgImage, 'repeat');
         ctx.fillStyle = ptrn;
         ctx.fillRect(0, 0, canvas.width, canvas.height); // context.fillRect(x, y, width, height);
     }
-    
+
     //sprite x frame based on d,r,u,l
     var spriteX = 0;
     var spriteY = 0;
-    
-    //MONSTER
+
     //MONSTER RENDER LOOP
-    //draw monsters
     for(i=0;i<monsters.length;i++){
-        //Testing square for monster
+        //testing monster shape
         /*
             ctx.beginPath();
             ctx.rect(monster.x, monster.y, 64, 64);
@@ -456,14 +573,14 @@ var render = function () {
                 monsterImage,                                   //image
                 spriteX, spriteY,                               //image in slice
                 options.grid.tileSize, options.grid.tileSize,   //size of slice
-                monsters[i].x, monsters[i].y,                           //image pos
+                monsters[i].x, monsters[i].y,                   //image pos
                 options.grid.tileSize, options.grid.tileSize    //size of image
             );
         }
-    }//end monster render loop
-        
-    
-    //ATTACK
+    }
+    //end monster render loop
+
+    //ATTACK RENDER
     spriteX = 0;
     spriteY = 0;
     switch(hero.lastDirection){
@@ -480,24 +597,25 @@ var render = function () {
             spriteX = options.grid.tileSize * 3;
         break;
     }
+
     if(attackReady && hero.attack == true) {
-        //baackup red sword fill
+        //testing sword shape
         /*
-        ctx.beginPath();
-        ctx.rect(sword.x, sword.y, sword.w, sword.h);
-        ctx.fillStyle = "red";
-        ctx.fill();
+            ctx.beginPath();
+            ctx.rect(sword.x, sword.y, sword.w, sword.h);
+            ctx.fillStyle = "red";
+            ctx.fill();
         */
         ctx.drawImage(
             swordImage,                                     //image
-            spriteX, spriteY,                                     //image in slice
+            spriteX, spriteY,                               //image in slice
             options.grid.tileSize, options.grid.tileSize,   //size of slice
-            sword.spriteX, sword.spriteY,                               //image pos
+            sword.spriteX, sword.spriteY,                   //image pos
             options.grid.tileSize, options.grid.tileSize    //size of image
         );
     }
 
-    //HERO
+    //HERO RENDER
     spriteX = 0;
     spriteY = 0;
     switch(hero.lastDirection){
@@ -515,7 +633,6 @@ var render = function () {
         break;
     }
     if (heroReady) {
-        // draw the hero
         //Testing square for character
         /*
             ctx.beginPath();
@@ -535,7 +652,32 @@ var render = function () {
         );
     }
 
-    // Score
+    //render heads up map
+    var i = 0;
+    var loopLength = world.length;
+    var tile = null;
+    var xStart = options.screen.width - 30;
+    var x = xStart;
+    var y = 10;
+    var lastRow = 0;
+
+    for(i; i < loopLength; i++) {
+        tile = world[i];
+        if(tile.row !== lastRow){
+            y += 5;
+            x = xStart;
+        }
+        ctx.fillStyle = 'red';
+        ctx.fillRect(x,y,4,4);
+        if( tile.isCurrent === true ){
+            ctx.fillStyle = 'yellow';
+            ctx.fillRect(x,y,4,4);
+        }
+        x += 5;
+        lastRow = tile.row;
+    }
+
+    //Render Score
     ctx.fillStyle = "rgb(0, 0, 0)";
     ctx.font = "18px Helvetica";
     ctx.textAlign = "left";
@@ -557,7 +699,10 @@ var main = function () {
     requestAnimationFrame(main);
 };
 
-// requestAnimationFrame for all browsers
+////////////
+// * requestAnimationFrame for all browsers
+////////////
+
 var w = window;
 requestAnimationFrame = w.requestAnimationFrame || w.webkitRequestAnimationFrame || w.msRequestAnimationFrame || w.mozRequestAnimationFrame;
 

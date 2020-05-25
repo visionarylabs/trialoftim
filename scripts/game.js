@@ -170,37 +170,40 @@ const buildWorld = function(){
     var i = 0;
     var loopLength = world.length;
     var screenNum = 0;
+    var numberOfMonsters = 1;
     for(i = 0; i < loopLength; i++) {
         screenNum = i + 1;
+        
         switch(screenNum){
             case 1:
-                numberOfMonsters = 6;
+                numberOfMonsters = 5;
             break;
             case 2:
-                numberOfMonsters = 3;
+                numberOfMonsters = 4;
             break;
             case 3:
                 numberOfMonsters = 5;
             break;
             case 4:
-                numberOfMonsters = 4;
+                numberOfMonsters = 3;
             break;
             case 5:
                 numberOfMonsters = 2;
             break;
             case 6:
-                numberOfMonsters = 4;
+                numberOfMonsters = 3;
             break;
             case 7:
-                numberOfMonsters = 1;
+                numberOfMonsters = 2;
             break;
             case 8:
                 numberOfMonsters = 1;
             break;
             case 9:
-                numberOfMonsters = 1;
+                numberOfMonsters = 2;
             break;
         }
+        
         world[i].contains = {
             startingNumberOfMonsters : numberOfMonsters,
             numberOfMonsters : numberOfMonsters
@@ -269,7 +272,7 @@ var makeMonster = function(){
     };
     //todo fix get random tile
     //was 1-15, 1-10
-    monster.x = ranomdNumberRange(2,13) * options.grid.tileSize - options.grid.tileSize;
+    monster.x = ranomdNumberRange(3,13) * options.grid.tileSize - options.grid.tileSize;
     monster.y = ranomdNumberRange(3,8) * options.grid.tileSize - options.grid.tileSize;
     return monster;
 }
@@ -285,7 +288,6 @@ var resetHero = function () {
 //see if there is a screen on the world map to move to
 //return the screen id
 var checkScreen = function( direction ){
-    console.log('check screen ' + direction);
     var i = 0;
     var screenNum = null;
     var loopLength = world.length;
@@ -299,7 +301,6 @@ var checkScreen = function( direction ){
                     currentScreen.col == world[i].col &&
                     currentScreen.row == world[i].row - 1
                 ){
-                    console.log('found adjacent down screen ' + screenNum);
                     return screenNum;
                 }
             break;
@@ -308,7 +309,6 @@ var checkScreen = function( direction ){
                     currentScreen.row == world[i].row &&
                     currentScreen.col == world[i].col - 1
                 ){
-                    console.log('found adjacent right screen ' + screenNum);
                     return screenNum;
                 }
             break;
@@ -317,7 +317,6 @@ var checkScreen = function( direction ){
                     currentScreen.col == world[i].col &&
                     currentScreen.row == world[i].row + 1
                 ){
-                    console.log('found adjacent up screen ' + screenNum);
                     return screenNum;
                 }
             break;
@@ -326,7 +325,6 @@ var checkScreen = function( direction ){
                     currentScreen.row == world[i].row &&
                     currentScreen.col == world[i].col + 1
                 ){
-                    console.log('found adjacent left screen ' + screenNum);
                     return screenNum;
                 }
             break;
@@ -335,7 +333,6 @@ var checkScreen = function( direction ){
 }
 var moveScreen = function( moveToScreenId, direction ){
     moveToScreenId = moveToScreenId -1; //todo fix num vs id for 0 check
-    console.log('move to screen ' + moveToScreenId + ' ' + direction);
     var currentScreenId = getCurrentScreenId();
     switch(direction){
         case 'down':
@@ -369,11 +366,25 @@ var getCurrentScreenNum = function(){
     return world[currentScreenId].num;
 }
 
+var checkMonstersLeft = function(){
+    var i = 0;
+    var loopLength = world.length;
+    for(i = 0; i < loopLength; i++) {
+        if( world[i].contains.numberOfMonsters > 0 ){
+            return false;
+        }
+    }
+    return true;
+}
+
 //show a screen slide, for winning or death
 var showScreen = function(screenSlug){
-    state.gameState = 'death';
-    console.log(screenSlug);
-    console.log('SCREEN SHOW');
+    if(screenSlug == 'death'){
+        state.gameState = 'death';
+    }
+    if(screenSlug == 'win'){
+        state.gameState = 'win';
+    }
 }
 
 ////////////
@@ -383,7 +394,6 @@ var showScreen = function(screenSlug){
 var init = function(){
     world = new worldFactory(3,3);
     buildWorld();
-    console.log(world);
     resetHero();
     resetMonster();
     main();
@@ -396,7 +406,7 @@ var init = function(){
 var update = function (modifier) {
 
     //death screen state
-    if(state.gameState == 'death'){
+    if(state.gameState == 'death' || state.gameState == 'win'){
         if (27 in keysDown || 13 in keysDown) { // Player holding esc or return
             resetGame();
         }
@@ -404,6 +414,7 @@ var update = function (modifier) {
 
     //game play update, return if not in game state
     if(state.gameState !== 'game') return;
+    
     var currentScreenId = getCurrentScreenId();
     if (38 in keysDown || 87 in keysDown) { // Player holding up or w
         if(hero.attacking == false){
@@ -561,6 +572,11 @@ var update = function (modifier) {
             monster.frame = 3; //3 = death frame
             monster.status = 'dead';
             world[currentScreenId].contains.numberOfMonsters--;
+            //check for win{
+            if( checkMonstersLeft() === true ){
+                showScreen('win');
+                return;
+            }
         }
 
         // turn monster on edge
@@ -763,7 +779,7 @@ var render = function () {
     ctx.textBaseline = "top";
     ctx.fillText("points: " + state.points, 10, 10);
     
-    //render type
+    //render screen state messages
     if(state.gameState == 'death'){
         ctx.fillStyle = "rgb(0, 0, 0)";
         ctx.textAlign = "left";
@@ -780,7 +796,23 @@ var render = function () {
         ctx.fillText("ESC or RETURN to try again.", 80, 350);
         ctx.fillStyle = "rgb(0, 0, 0)";
         ctx.fillText("ESC or RETURN to try again.", 84, 354);
+    }
+    if(state.gameState == 'win'){
+        ctx.fillStyle = "rgb(0, 0, 0)";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "top";
 
+        ctx.font = "120px Helvetica";
+        ctx.fillStyle = "rgb(255, 255, 255)";
+        ctx.fillText("You Win!", 60, 200);
+        ctx.fillStyle = "rgb(0, 0, 0)";
+        ctx.fillText("You Win!", 64, 204);
+        
+        ctx.font = "60px Helvetica";
+        ctx.fillStyle = "rgb(255, 255, 255)";
+        ctx.fillText("ESC or RETURN to play again.", 80, 350);
+        ctx.fillStyle = "rgb(0, 0, 0)";
+        ctx.fillText("ESC or RETURN to play again.", 84, 354);
     }
 };
 

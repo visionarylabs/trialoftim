@@ -13,8 +13,10 @@ options.screen.width = 960;
 options.screen.height = 640;
 options.grid = {}
 options.grid.tileSize = 64;
+options.grid.spriteFrameSize = 64;
 options.grid.width = 15;
 options.grid.height = 10;
+options.showHitBoxes = false;
 
 var state = {
     gameState : null, //'game','death','win'
@@ -69,37 +71,37 @@ if(options.resizeGame == true){
 // * GAME RESOURCES / IMAGES
 ////////////
 
-// Background image
-var bgReady = false;
-var bgImage = new Image();
-bgImage.src = 'images/tile-01.png';
-bgImage.onload = function(){
-    bgReady = true;
-}
-
-// Hero image
-var heroReady = false;
-var heroImage = new Image();
-heroImage.onload = function () {
-    heroReady = true;
-};
-heroImage.src = "images/hero-skin-sprite.png";
-
-// Sword image
-var swordReady = false;
-var swordImage = new Image();
-swordImage.onload = function () {
-    swordReady = true;
-};
-swordImage.src = "images/sword-sprite.png";
-
-// Monster image
-var monsterReady = false;
-var monsterImage = new Image();
-monsterImage.onload = function () {
-    monsterReady = true;
-};
-monsterImage.src = "images/monster-001-sprite.png";
+    // Background image
+    var bgReady = false;
+    var bgImage = new Image();
+    bgImage.src = 'images/tile-01.png';
+    bgImage.onload = function(){
+        bgReady = true;
+    }
+    
+    // Hero image
+    var heroReady = false;
+    var heroImage = new Image();
+    heroImage.onload = function () {
+        heroReady = true;
+    };
+    heroImage.src = "images/hero-skin-sprite.png";
+    
+    // Sword image
+    var swordReady = false;
+    var swordImage = new Image();
+    swordImage.onload = function () {
+        swordReady = true;
+    };
+    swordImage.src = "images/sword-sprite.png";
+    
+    // Monster image
+    var monsterReady = false;
+    var monsterImage = new Image();
+    monsterImage.onload = function () {
+        monsterReady = true;
+    };
+    monsterImage.src = "images/monster-001-sprite.png";
 
 ////////////
 // * GAME OBJECTS
@@ -115,7 +117,9 @@ var hero = {
     attacking : false,
     lastAttack : null,
     canAttack : true,
-    lastDirection : 'd'
+    lastDirection : 'd',
+    hitBox : {w:40,h:40,offset:12},
+    status : 'alive' //'allive','dead'
 };
 
 var sword = {
@@ -268,7 +272,9 @@ var makeMonster = function(){
         velY : 0,
         speed : 150,
         status : 'alive', //alive, dead
-        frame : 1 //the frame of the animation, 1 or 2, 3 for death
+        frame : 1, //the frame of the animation, 1 or 2, 3 for death
+        deathTime : null,
+        hitBox : {w:40,h:40,offset:12}
     };
     //todo fix get random tile
     //was 1-15, 1-10
@@ -281,6 +287,7 @@ var resetHero = function () {
     var currentScreenId = getCurrentScreenId();
     world[currentScreenId].isCurrent = false;
     world[7].isCurrent = true;
+    hero.status = 'alive';
     hero.x = ranomdNumberRange(2,14) * options.grid.tileSize - options.grid.tileSize;
     hero.y = ranomdNumberRange(2,9) * options.grid.tileSize - options.grid.tileSize;
 }
@@ -440,7 +447,7 @@ var update = function (modifier) {
             hero.lastDirection = 'r';
         }
     }
-    if (32 in keysDown) { // Player holding space
+    if (32 in keysDown || 16 in keysDown) { // Player holding space or shift
         if(hero.attacking == false && hero.canAttack == true){
             hero.attack = true;
             hero.lastAttack = then;
@@ -471,44 +478,45 @@ var update = function (modifier) {
         sword.x = hero.x + halfTile - eigthTile;
         sword.y = hero.y - swordLong;
         sword.spriteX = hero.x;
-        sword.spriteY = hero.y - options.grid.tileSize;
+        sword.spriteY = hero.y - options.grid.spriteFrameSize;
     }
     if(hero.lastDirection == 'd'){
         sword.h = swordLong;
         sword.w = swordShort;
         sword.x = hero.x + halfTile - eigthTile;
-        sword.y = hero.y + options.grid.tileSize;
+        sword.y = hero.y + options.grid.spriteFrameSize;
         sword.spriteX = hero.x;
-        sword.spriteY = hero.y + options.grid.tileSize;
+        sword.spriteY = hero.y + options.grid.spriteFrameSize;
     }
     if(hero.lastDirection == 'l'){
         sword.w = swordLong;
         sword.h = swordShort;
         sword.x = hero.x - swordLong;
         sword.y = hero.y + halfTile - eigthTile;
-        sword.spriteX = hero.x - options.grid.tileSize;
+        sword.spriteX = hero.x - options.grid.spriteFrameSize;
         sword.spriteY = hero.y;
     }
     if(hero.lastDirection == 'r'){
         sword.w = swordLong;
         sword.h = swordShort;
-        sword.x = hero.x + options.grid.tileSize;
+        sword.x = hero.x + options.grid.spriteFrameSize;
         sword.y = hero.y + halfTile - eigthTile;
-        sword.spriteX = hero.x + options.grid.tileSize;
+        sword.spriteX = hero.x + options.grid.spriteFrameSize;
         sword.spriteY = hero.y;
     }
 
     /**
+        EDGE TEST
         HERO ON EDGE
         MOVE TO SCREEN IF POSSILBE
     **/
     // X Edge
     var moveToScreenId = null;
-    if (hero.x > canvas.width - options.grid.tileSize) {  //right edge
+    if (hero.x > canvas.width - options.grid.spriteFrameSize) {  //right edge
         if( moveToScreenId = checkScreen('right') ){
             moveScreen(moveToScreenId,'right');
         }else{
-            hero.x = canvas.width - options.grid.tileSize;
+            hero.x = canvas.width - options.grid.spriteFrameSize;
         }
     }else if (hero.x < 0) { //left edge
         if( moveToScreenId = checkScreen('left') ){
@@ -518,11 +526,11 @@ var update = function (modifier) {
         }
     }
     // Y Edge
-    if (hero.y > canvas.height - options.grid.tileSize) { //bottom edge
+    if (hero.y > canvas.height - options.grid.spriteFrameSize) { //bottom edge
         if( moveToScreenId = checkScreen('down') ){
             moveScreen(moveToScreenId,'down');
         }else{
-            hero.y = canvas.height - options.grid.tileSize;
+            hero.y = canvas.height - options.grid.spriteFrameSize;
         }
     }else if (hero.y < 0) { //top edge
         if( moveToScreenId = checkScreen('up') ){
@@ -559,7 +567,7 @@ var update = function (modifier) {
             monster.y += monster.velY * monster.speed * modifier;
         }
 
-        // ATTACK HITS // Monster Dies
+        // HIT TEST // ATTACK HITS // Monster Dies
         if (
             hero.attack == true
             && sword.x <= (monster.x + options.grid.tileSize)
@@ -571,6 +579,7 @@ var update = function (modifier) {
             state.points++;
             monster.frame = 3; //3 = death frame
             monster.status = 'dead';
+            monster.deathTime = then;
             world[currentScreenId].contains.numberOfMonsters--;
             //check for win{
             if( checkMonstersLeft() === true ){
@@ -579,17 +588,17 @@ var update = function (modifier) {
             }
         }
 
-        // turn monster on edge
-        if (monster.x >= canvas.width - monsterImage.width) {
-            monster.x = canvas.width - monsterImage.width;
+        // EDGE TEST // turn monster on edge
+        if (monster.x >= canvas.width - options.grid.spriteFrameSize) {
+            monster.x = canvas.width - options.grid.spriteFrameSize;
             monster.velX = -1;
         }
         else if (monster.x <= 0) {
             monster.x = 0;
             monster.velX = 1;
         }
-        if (monster.y >= canvas.height - monsterImage.height) {
-            monster.y = canvas.height - monsterImage.height;
+        if (monster.y >= canvas.height - options.grid.spriteFrameSize) {
+            monster.y = canvas.height - options.grid.spriteFrameSize;
             monster.velY = -1;
         }
         else if (monster.y <= 0) {
@@ -597,14 +606,15 @@ var update = function (modifier) {
             monster.velY = 1;
         }
 
-        // hero touching monster? Hero Dies!
+        // HIT TEST // hero touching monster // Hero Dies!
         if (
-            hero.x <= (monster.x + options.grid.tileSize)
-            && monster.x <= (hero.x + options.grid.tileSize)
-            && hero.y <= (monster.y + options.grid.tileSize)
-            && monster.y <= (hero.y + options.grid.tileSize)
+            hero.x + hero.hitBox.offset <= (monster.x + monster.hitBox.offset + monster.hitBox.w) //M width
+            && monster.x + monster.hitBox.offset <= (hero.x + hero.hitBox.offset + hero.hitBox.w) //H width
+            && hero.y + hero.hitBox.offset <= (monster.y + monster.hitBox.offset + monster.hitBox.h) //M height
+            && monster.y + monster.hitBox.offset <= (hero.y + hero.hitBox.offset + hero.hitBox.h) //H height
             && monster.status == 'alive'
         ) {
+            hero.status = 'dead';
             showScreen('death');
             return;
         }
@@ -624,11 +634,12 @@ var update = function (modifier) {
                 monsters[i].frame = 1;
             }
         }
-        //clean up destoryed monsters
-        for(monsterCheckNum = monsters.length - 1; monsterCheckNum >= 0; monsterCheckNum--){
-            if(monsters[monsterCheckNum].status == 'dead'){
-                monsters.splice(monsterCheckNum,1);
-            }
+    }
+    
+    //clean up destoryed monsters
+    for(monsterCheckNum = monsters.length - 1; monsterCheckNum >= 0; monsterCheckNum--){
+        if(monsters[monsterCheckNum].status == 'dead' && ( then - monsters[monsterCheckNum].deathTime > 250 ) ){
+            monsters.splice(monsterCheckNum,1);
         }
     }
 
@@ -654,23 +665,24 @@ var render = function () {
 
     //MONSTER RENDER LOOP
     for(i=0;i<monsters.length;i++){
-        //testing monster shape
-        /*
-            ctx.beginPath();
-            ctx.rect(monster.x, monster.y, 64, 64);
-            ctx.fillStyle = "purple";
-            ctx.fill();
-        */
-        spriteX = (monsters[i].frame - 1) * options.grid.tileSize;
+        spriteX = (monsters[i].frame - 1) * options.grid.spriteFrameSize;
         spriteY = 0;
         if (monsterReady) {
             ctx.drawImage(
                 monsterImage,                                   //image
                 spriteX, spriteY,                               //image in slice
-                options.grid.tileSize, options.grid.tileSize,   //size of slice
+                options.grid.spriteFrameSize, options.grid.spriteFrameSize,   //size of slice
                 monsters[i].x, monsters[i].y,                   //image pos
-                options.grid.tileSize, options.grid.tileSize    //size of image
+                options.grid.spriteFrameSize, options.grid.spriteFrameSize    //size of image
             );
+        }
+        if(options.showHitBoxes == true){
+            ctx.globalAlpha = 0.4;
+            ctx.beginPath();
+            ctx.rect(monsters[i].x + monsters[i].hitBox.offset, monsters[i].y + monsters[i].hitBox.offset, monsters[i].hitBox.w, monsters[i].hitBox.h);
+            ctx.fillStyle = "purple";
+            ctx.fill();
+            ctx.globalAlpha = 1;
         }
     }
     //end monster render loop
@@ -680,34 +692,35 @@ var render = function () {
     spriteY = 0;
     switch(hero.lastDirection){
         case 'd':
-            spriteX = options.grid.tileSize * 0;
+            spriteX = options.grid.spriteFrameSize * 0;
         break;
         case 'r':
-            spriteX = options.grid.tileSize * 1;
+            spriteX = options.grid.spriteFrameSize * 1;
         break;
         case 'u':
-            spriteX = options.grid.tileSize * 2;
+            spriteX = options.grid.spriteFrameSize * 2;
         break;
         case 'l':
-            spriteX = options.grid.tileSize * 3;
+            spriteX = options.grid.spriteFrameSize * 3;
         break;
     }
 
     if(hero.attack == true) {
-        //testing sword shape
-        /*
+        ctx.drawImage(
+            swordImage,                                     //image
+            spriteX, spriteY,                               //image in slice
+            options.grid.spriteFrameSize, options.grid.spriteFrameSize,   //size of slice
+            sword.spriteX, sword.spriteY,                   //image pos
+            options.grid.spriteFrameSize, options.grid.spriteFrameSize    //size of image
+        );
+        if(options.showHitBoxes == true){
+            ctx.globalAlpha = 0.4;
             ctx.beginPath();
             ctx.rect(sword.x, sword.y, sword.w, sword.h);
             ctx.fillStyle = "red";
             ctx.fill();
-        */
-        ctx.drawImage(
-            swordImage,                                     //image
-            spriteX, spriteY,                               //image in slice
-            options.grid.tileSize, options.grid.tileSize,   //size of slice
-            sword.spriteX, sword.spriteY,                   //image pos
-            options.grid.tileSize, options.grid.tileSize    //size of image
-        );
+            ctx.globalAlpha = 1;
+        }
     }
 
     //HERO RENDER
@@ -715,36 +728,41 @@ var render = function () {
     spriteY = 0;
     switch(hero.lastDirection){
         case 'd':
-            spriteX = options.grid.tileSize * 0;
+            spriteX = options.grid.spriteFrameSize * 0;
         break;
         case 'r':
-            spriteX = options.grid.tileSize * 1;
+            spriteX = options.grid.spriteFrameSize * 1;
         break;
         case 'u':
-            spriteX = options.grid.tileSize * 2;
+            spriteX = options.grid.spriteFrameSize * 2;
         break;
         case 'l':
-            spriteX = options.grid.tileSize * 3;
+            spriteX = options.grid.spriteFrameSize * 3;
         break;
     }
     if (heroReady) {
-        //Testing square for character
-        /*
-            ctx.beginPath();
-            ctx.rect(hero.x, hero.y, 64, 64);
-            ctx.fillStyle = "blue";
-            ctx.fill();
-        */
         if(hero.attack == true) {
             spriteY = 64;
+        }
+        if(hero.status == 'dead') {
+            spriteX = 256;
+            spriteY = 0;
         }
         ctx.drawImage(
             heroImage,                                      //image
             spriteX, spriteY,                               //image in slice
-            options.grid.tileSize, options.grid.tileSize,   //size of slice
+            options.grid.spriteFrameSize, options.grid.spriteFrameSize,   //size of slice
             hero.x, hero.y,                                 //image pos
-            options.grid.tileSize, options.grid.tileSize    //size of image
+            options.grid.spriteFrameSize, options.grid.spriteFrameSize    //size of image
         );
+        if(options.showHitBoxes == true){
+            ctx.globalAlpha = 0.4;
+            ctx.beginPath();
+            ctx.rect(hero.x + hero.hitBox.offset, hero.y + hero.hitBox.offset, hero.hitBox.w, hero.hitBox.h);
+            ctx.fillStyle = "blue";
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        }
     }
 
     //render heads up map
@@ -789,13 +807,13 @@ var render = function () {
         ctx.fillStyle = "rgb(255, 255, 255)";
         ctx.fillText("You Died!", 60, 200);
         ctx.fillStyle = "rgb(0, 0, 0)";
-        ctx.fillText("You Died!", 64, 204);
+        ctx.fillText("You Died!", 62, 202);
         
         ctx.font = "60px Helvetica";
         ctx.fillStyle = "rgb(255, 255, 255)";
         ctx.fillText("ESC or RETURN to try again.", 80, 350);
         ctx.fillStyle = "rgb(0, 0, 0)";
-        ctx.fillText("ESC or RETURN to try again.", 84, 354);
+        ctx.fillText("ESC or RETURN to try again.", 82, 352);
     }
     if(state.gameState == 'win'){
         ctx.fillStyle = "rgb(0, 0, 0)";
@@ -806,13 +824,13 @@ var render = function () {
         ctx.fillStyle = "rgb(255, 255, 255)";
         ctx.fillText("You Win!", 60, 200);
         ctx.fillStyle = "rgb(0, 0, 0)";
-        ctx.fillText("You Win!", 64, 204);
+        ctx.fillText("You Win!", 62, 202);
         
         ctx.font = "60px Helvetica";
         ctx.fillStyle = "rgb(255, 255, 255)";
         ctx.fillText("ESC or RETURN to play again.", 80, 350);
         ctx.fillStyle = "rgb(0, 0, 0)";
-        ctx.fillText("ESC or RETURN to play again.", 84, 354);
+        ctx.fillText("ESC or RETURN to play again.", 82, 352);
     }
 };
 

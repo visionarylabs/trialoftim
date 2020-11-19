@@ -159,9 +159,39 @@ const screenFactory = function(id,num,col,row) {
         col : col,
         row : row,
         isCurrent : false,
-        contains : {}
+        contains : {},
+        tiles : []
     };
     return screen;
+};
+
+const tileFactory = function(num,col,row,tileType,x,y,color) {
+    var tile = {
+        num : num,
+        col : col,
+        row : row,
+        tileType : tileType,
+        contains : [], // reference to sprite in game list
+        ui : {
+            x : x,
+            y : y,
+            color : color,
+        }
+    };
+    tile.ui = setUi(x,y,options.grid.tileSize,options.grid.tileSize,color,0,0,0);
+    if(tile.tileType === 'tile'){
+        tile.ui.image.src = 'images/tile-01.png';
+    }
+    if(tile.tileType === 'bush'){
+        tile.ui.image.src = 'images/tile-bush.png';
+    }
+    if(tile.tileType === 'rock'){
+        tile.ui.image.src = 'images/tile-rock.png';
+    }
+    if(tile.tileType === 'door'){
+        tile.ui.image.src = 'images/tile-door.png';
+    }
+    return tile;
 };
 
 //fill in a world map with screen types and contents
@@ -215,6 +245,24 @@ const buildWorld = function(){
     }
 }
 
+const buildWorldData = function(data){
+    var screenData = data.world.screens;
+    var i = 0; //screens
+    var j = 0; //tiles
+    var loopLength = world.length;
+    var screenNum = 0;
+    var tileData = null;
+    for(i = 0; i < loopLength; i++) {
+        world[i].tiles = screenData[i].tiles;
+        for( j = 0; j < world[i].tiles.length; j++ ) {
+            tileData = screenData[i].tiles[j];
+            world[i].tiles[j] = tileFactory( tileData.num, tileData.col, tileData.row, tileData.tileType, tileData.col * options.grid.tileSize, tileData.row * options.grid.tileSize, null );
+        }
+    }
+    console.log('done building world');
+    console.log(world);
+}
+
 ////////////
 // * KEYBOARD CONTROLS
 ////////////
@@ -234,6 +282,18 @@ addEventListener("keyup", function (e) {
 ////////////
 // * GAME HELPER FUNCTIONS
 ////////////
+
+var setUi = function (x,y,w,h,color,ox,oy,io){
+    return{
+        x : x,
+        y : y,
+        size : {w:w,h:h},
+        color : color,
+        image : new Image(),
+        shapeOffset : {x:ox,y:oy},
+        imageOffset : io,
+    }
+}
 
 var ranomdNumberRange = function(min, max) { // min and max included
   return Math.floor(Math.random() * (max - min + 1) + min);
@@ -274,7 +334,9 @@ var makeMonster = function(){
         status : 'alive', //alive, dead
         frame : 1, //the frame of the animation, 1 or 2, 3 for death
         deathTime : null,
-        hitBox : {w:40,h:40,offset:12}
+        hitBox : {w:40,h:40,offset:12},
+        lastGoodX : 0,
+        lastGoodY : 0,
     };
     //todo fix get random tile
     //was 1-15, 1-10
@@ -399,11 +461,42 @@ var showScreen = function(screenSlug){
 ////////////
 
 var init = function(){
-    world = new worldFactory(3,3);
-    buildWorld();
-    resetHero();
-    resetMonster();
-    main();
+    //test world data
+    var worldData = null;
+    getJSON('data/data.php',
+    function(err, data) {
+        if (err !== null) {
+            alert('Something went wrong: ' + err);
+        } else {
+            //todo fix up init, for now start the game after the data is loaded.
+            console.log('got some data');
+            console.log(data);
+            worldData = data;
+            world = new worldFactory(3,3);
+            console.log('here is the hard coded world');
+            console.log(world);
+            buildWorld();
+            buildWorldData(worldData);
+            resetHero();
+            resetMonster();
+            main();
+        }
+    });
+}
+
+var getJSON = function(url, callback) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.responseType = 'json';
+    xhr.onload = function() {
+        var status = xhr.status;
+        if (status === 200) {
+            callback(null, xhr.response);
+        } else {
+            callback(status, xhr.response);
+        }
+    };
+    xhr.send();
 };
 
 ////////////
@@ -562,6 +655,8 @@ var update = function (modifier) {
             }else if(monsterSwitchChance < 12){
                 monster.velY = 0;
             }
+            monster.lastGoodX = monster.x;
+            monster.lastGoodY = monster.y;
             //move the monster
             monster.x += monster.velX * monster.speed * modifier;
             monster.y += monster.velY * monster.speed * modifier;
@@ -604,6 +699,24 @@ var update = function (modifier) {
         else if (monster.y <= 0) {
             monster.y = 0;
             monster.velY = 1;
+        }
+        
+        // MONSTER TILE TEST
+        var j = 0; //tiles
+        var tile = null;
+        for( j = 0; j < world[currentScreenId].tiles.length; j++ ) {
+            tile = world[currentScreenId].tiles[j];
+            if (
+                (tile.tileType == 'rock' || tile.tileType == 'bush') && 
+                monster.x < (tile.ui.x + options.grid.tileSize) && (monster.x + options.grid.tileSize) > tile.ui.x &&
+                monster.y < (tile.ui.y + options.grid.tileSize) && (monster.y + options.grid.tileSize) > tile.ui.y
+            ) {
+                console.log('in block!');
+                monster.x = monster.lastGoodX;
+                monster.y = monster.lastGoodY;
+                monster.velX = monster.velX * -1;
+                monster.velY = monster.velY * -1;
+            }
         }
 
         // HIT TEST // hero touching monster // Hero Dies!
@@ -651,13 +764,30 @@ var update = function (modifier) {
 
 var render = function () {
 
-    //BG RENDER
+    //BOARD RENDER REPEAT TILE FOR BACKGROUND
     if (bgReady) {
         ctx.drawImage(bgImage, 0, 0);
         var ptrn = ctx.createPattern(bgImage, 'repeat');
         ctx.fillStyle = ptrn;
         ctx.fillRect(0, 0, canvas.width, canvas.height); // context.fillRect(x, y, width, height);
     }
+    
+    // RENDER SCREEN TILES // started from renderBoard in og-tools render.js
+    var renderScreen = function () {
+        var screenId = getCurrentScreenId();
+        var tiles = world[screenId].tiles;
+        var i = 0;
+        var loopLength = tiles.length;
+        var tile = null;
+        for(i; i < loopLength; i++) {
+            tile = tiles[i];
+            ctx.fillStyle = tile.ui.color;
+            ctx.fillRect(tile.ui.x,tile.ui.y,options.grid.tileSize,options.grid.tileSize);
+            if(tile.ui.image.src){
+                ctx.drawImage(tile.ui.image, tile.ui.x - tile.ui.imageOffset, tile.ui.y - tile.ui.imageOffset);
+            }
+        }
+    }(); //TODO for now just call this inside render
 
     //sprite x frame based on d,r,u,l
     var spriteX = 0;

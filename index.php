@@ -48,7 +48,7 @@
             <h1>The Trial of Tim</h1>
             <p>Move with arrow keys, attack with spacebar.</p>
         </div>
-        <?php include_once('../../lib/includes/opalgames-footer.php'); ?>
         <script type='text/javascript' src='scripts/game.js?t=<?php print time(); ?>'></script>
+        <?php include_once('../../lib/includes/opalgames-footer.php'); ?>
     </body>
 </html>

@@ -5,7 +5,7 @@
 #nes zelda feature clone
 
 #todo
-1. hit test with world objects
+1. add loader to screen builder
 1. fix world and screen factory to read data
 1. screen builder
 1. world builder

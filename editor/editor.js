@@ -13,7 +13,12 @@
 **/
 
 console.log('run the editor');
+//listen
+document.getElementById("btnLoadScreen").addEventListener('click', function() {
+	rules.loadScreen();
+});
 
+												  
 var gameRules = function () {
 
     var reset = function () {
@@ -21,7 +26,34 @@ var gameRules = function () {
         og.cl(box);
         og.cl(state);
     }
-    
+
+	var loadScreen = function () {
+		var screenData = document.getElementById("screenOutput").value;
+		var screenDataJson = JSON.parse(screenData);
+		console.log(screenDataJson);
+		console.log(box.board);
+		var i = 0;
+		var loopLength = screenDataJson.tiles.length;
+		var tile = null;
+		for(i; i < loopLength; i++) {
+			box.board[i].tileType = screenDataJson.tiles[i].tileType;
+			switch(box.board[i].tileType){
+				case 'tile':
+					box.board[i].ui.image.src = '../images/tile-01.png';
+				break;
+				case 'bush':
+					box.board[i].ui.image.src = '../images/tile-bush.png';
+				break;
+				case 'rock':
+					box.board[i].ui.image.src = '../images/tile-rock.png';
+				break;
+				case 'door':
+					box.board[i].ui.image.src = '../images/tile-door.png';
+				break;
+			}
+		}	
+	}
+	
     var processClick = function (click) {
         var tileNum = og.board.getTileNumFromClick( click );
         var tileId = og.board.convertTileNumToId( tileNum );
@@ -74,6 +106,7 @@ var gameRules = function () {
 
     return {
         reset : reset,
-        processClick : processClick
+        processClick : processClick,
+		loadScreen : loadScreen
     }
 }

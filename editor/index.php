@@ -58,9 +58,9 @@
                 <option name="rock">rock</option>
             </select>
             <p>Save Screen</p>
+			<p id="btnLoadScreen">Load Screen</p>
             <p>Save World</p>
-            <textarea id='screenOutput' class="screenOutput">
-            </textarea>
+            <textarea id='screenOutput' class="screenOutput"></textarea>
         </div>
         <?php include_once('../../../lib/includes/opalgames-footer.php'); ?>
         <?php /**

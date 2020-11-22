@@ -119,7 +119,9 @@ var hero = {
     canAttack : true,
     lastDirection : 'd',
     hitBox : {w:40,h:40,offset:12},
-    status : 'alive' //'allive','dead'
+    status : 'alive', //'allive','dead'
+    lastGoodX : 0,
+    lastGoodY : 0,
 };
 
 var sword = {
@@ -516,6 +518,10 @@ var update = function (modifier) {
     if(state.gameState !== 'game') return;
     
     var currentScreenId = getCurrentScreenId();
+    
+    hero.lastGoodX = hero.x;
+    hero.lastGoodY = hero.y;
+    
     if (38 in keysDown || 87 in keysDown) { // Player holding up or w
         if(hero.attacking == false){
             hero.y -= hero.speed * modifier;
@@ -605,7 +611,7 @@ var update = function (modifier) {
     **/
     // X Edge
     var moveToScreenId = null;
-    if (hero.x > canvas.width - options.grid.spriteFrameSize) {  //right edge
+    if (hero.x > canvas.width - options.grid.spriteFrameSize) { //right edge
         if( moveToScreenId = checkScreen('right') ){
             moveScreen(moveToScreenId,'right');
         }else{
@@ -630,6 +636,22 @@ var update = function (modifier) {
             moveScreen(moveToScreenId,'up');
         }else{
             hero.y = 0;
+        }
+    }
+
+    /* HERO TEST TILES */
+    var j = 0; //tiles
+    var tile = null;
+    for( j = 0; j < world[currentScreenId].tiles.length; j++ ) {
+        tile = world[currentScreenId].tiles[j];
+        if (
+            (tile.tileType == 'rock' || tile.tileType == 'bush') && 
+            hero.x < (tile.ui.x + options.grid.tileSize) && (hero.x + options.grid.tileSize) > tile.ui.x &&
+            hero.y < (tile.ui.y + options.grid.tileSize) && (hero.y + options.grid.tileSize) > tile.ui.y
+        ) {
+            console.log('hero in block!');
+            hero.x = hero.lastGoodX;
+            hero.y = hero.lastGoodY;
         }
     }
 
@@ -700,7 +722,7 @@ var update = function (modifier) {
             monster.y = 0;
             monster.velY = 1;
         }
-        
+
         // MONSTER TILE TEST
         var j = 0; //tiles
         var tile = null;

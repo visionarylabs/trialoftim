@@ -97,7 +97,7 @@ var gameFactory = function () {
     /**
         board factory for TOT level editor
     **/
-    const boardFactory = function(cols,rows,) {
+    const boardFactory = function(cols,rows) {
         var board = [];
         var tile = null;
         var iCol = 0;

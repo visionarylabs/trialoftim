@@ -6,6 +6,7 @@
 
 #todo
 1. add loader to screen builder
+1. fix tile obstacles and move snapping
 1. fix world and screen factory to read data
 1. screen builder
 1. world builder

@@ -68,6 +68,36 @@ if(options.resizeGame == true){
 }
 
 ////////////
+// * GAME OBJECTS
+////////////
+
+var monsters = [];
+
+var hero = {
+    speed: 256, // movement in pixels per second
+    x: 0,
+    y: 0,
+    attack : false,
+    attacking : false,
+    lastAttack : null,
+    canAttack : true,
+    lastDirection : 'd',
+    hitBox : {w:40,h:40,offset:12},
+    status : 'alive', //'allive','dead'
+    lastGoodX : 0,
+    lastGoodY : 0,
+    moveTargetX : 0,
+    moveTargetY : 0
+};
+
+var sword = {
+    x:0,
+    y:0,
+    w: 10,
+    h: 10
+}
+
+////////////
 // * GAME RESOURCES / IMAGES
 ////////////
 
@@ -102,34 +132,6 @@ if(options.resizeGame == true){
         monsterReady = true;
     };
     monsterImage.src = "images/monster-001-sprite.png";
-
-////////////
-// * GAME OBJECTS
-////////////
-
-var monsters = [];
-
-var hero = {
-    speed: 256, // movement in pixels per second
-    x: 0,
-    y: 0,
-    attack : false,
-    attacking : false,
-    lastAttack : null,
-    canAttack : true,
-    lastDirection : 'd',
-    hitBox : {w:40,h:40,offset:12},
-    status : 'alive', //'allive','dead'
-    lastGoodX : 0,
-    lastGoodY : 0,
-};
-
-var sword = {
-    x:0,
-    y:0,
-    w: 10,
-    h: 10
-}
 
 ////////////
 // * WORLD AND SCREENS
@@ -352,8 +354,13 @@ var resetHero = function () {
     world[currentScreenId].isCurrent = false;
     world[7].isCurrent = true;
     hero.status = 'alive';
-    hero.x = ranomdNumberRange(2,14) * options.grid.tileSize - options.grid.tileSize;
-    hero.y = ranomdNumberRange(2,9) * options.grid.tileSize - options.grid.tileSize;
+    
+    //hero.x = ranomdNumberRange(2,14) * options.grid.tileSize - options.grid.tileSize;
+    //hero.y = ranomdNumberRange(2,9) * options.grid.tileSize - options.grid.tileSize;
+    //todo find an empty tile in the current screen
+    hero.x = 8 * options.grid.tileSize - options.grid.tileSize;
+    hero.y = 5 * options.grid.tileSize - options.grid.tileSize;
+
 }
 
 //see if there is a screen on the world map to move to
@@ -518,9 +525,10 @@ var update = function (modifier) {
     if(state.gameState !== 'game') return;
     
     var currentScreenId = getCurrentScreenId();
-    
-    hero.lastGoodX = hero.x;
-    hero.lastGoodY = hero.y;
+
+    //save the last good hero POS rounded to a half tile point
+    hero.lastGoodX = Math.round(hero.x / (options.grid.tileSize / 2) ) * (options.grid.tileSize / 2);
+    hero.lastGoodY = Math.round(hero.y / (options.grid.tileSize / 2) ) * (options.grid.tileSize / 2);
     
     if (38 in keysDown || 87 in keysDown) { // Player holding up or w
         if(hero.attacking == false){
@@ -553,6 +561,22 @@ var update = function (modifier) {
             hero.attacking = true;
             hero.canAttack = false;
         }
+    }
+
+    if(
+        !(38 in keysDown) && !(87 in keysDown) && 
+        !(40 in keysDown) && !(83 in keysDown)
+    ){
+        //No More Y movement Keys... round Y to a half tile point
+        hero.y = Math.round(hero.y / (options.grid.tileSize / 2) ) * (options.grid.tileSize / 2);
+    }
+
+    if(
+        !(37 in keysDown) && !(65 in keysDown) && 
+        !(39 in keysDown) && !(68 in keysDown)
+    ){
+        //No More X movement Keys round X to a half tile point
+        hero.x = Math.round(hero.x / (options.grid.tileSize / 2) ) * (options.grid.tileSize / 2);
     }
 
     //attack check
@@ -644,14 +668,16 @@ var update = function (modifier) {
     var tile = null;
     for( j = 0; j < world[currentScreenId].tiles.length; j++ ) {
         tile = world[currentScreenId].tiles[j];
-        if (
-            (tile.tileType == 'rock' || tile.tileType == 'bush') && 
-            hero.x < (tile.ui.x + options.grid.tileSize) && (hero.x + options.grid.tileSize) > tile.ui.x &&
-            hero.y < (tile.ui.y + options.grid.tileSize) && (hero.y + options.grid.tileSize) > tile.ui.y
-        ) {
-            console.log('hero in block!');
-            hero.x = hero.lastGoodX;
-            hero.y = hero.lastGoodY;
+        if ( tile.tileType == 'rock' || tile.tileType == 'bush' ){
+            if (
+                hero.x < (tile.ui.x + options.grid.tileSize) && (hero.x + options.grid.tileSize) > tile.ui.x &&
+                hero.y < (tile.ui.y + options.grid.tileSize) && (hero.y + options.grid.tileSize) > tile.ui.y
+            ) {
+                console.log('hero in block!');
+                //todo fix to snap to block edge
+                //hero.x = hero.lastGoodX;
+                //hero.y = hero.lastGoodY;
+            }
         }
     }
 
@@ -733,7 +759,6 @@ var update = function (modifier) {
                 monster.x < (tile.ui.x + options.grid.tileSize) && (monster.x + options.grid.tileSize) > tile.ui.x &&
                 monster.y < (tile.ui.y + options.grid.tileSize) && (monster.y + options.grid.tileSize) > tile.ui.y
             ) {
-                console.log('in block!');
                 monster.x = monster.lastGoodX;
                 monster.y = monster.lastGoodY;
                 monster.velX = monster.velX * -1;

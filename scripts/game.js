@@ -74,25 +74,25 @@ if(options.resizeGame == true){
 var monsters = [];
 
 var hero = {
-    speed: 256, // movement in pixels per second
+    speed: 180, // movement in pixels per second
     x: 0,
     y: 0,
     attack : false,
     attacking : false,
     lastAttack : null,
     canAttack : true,
-    lastDirection : 'd',
+    curDirection : 'd',
     hitBox : {w:40,h:40,offset:12},
-    status : 'alive', //'allive','dead'
+    status : 'alive', //'alive','dead'
     lastGoodX : 0,
     lastGoodY : 0,
-    moveTargetX : 0,
-    moveTargetY : 0
+    moveTargetX : null,
+    moveTargetY : null
 };
 
 var sword = {
-    x:0,
-    y:0,
+    x: 0,
+    y: 0,
     w: 10,
     h: 10
 }
@@ -235,7 +235,7 @@ const buildWorld = function(){
                 numberOfMonsters = 2;
             break;
             case 8:
-                numberOfMonsters = 1;
+                numberOfMonsters = 0;
             break;
             case 9:
                 numberOfMonsters = 2;
@@ -275,6 +275,7 @@ var keysDown = {};
 
 addEventListener("keydown", function (e) {
     e.preventDefault();
+    //clearMoveKeys();
     keysDown[e.keyCode] = true;
 }, false);
 
@@ -282,6 +283,18 @@ addEventListener("keyup", function (e) {
     e.preventDefault();
     delete keysDown[e.keyCode];
 }, false);
+
+//not used now
+var clearMoveKeys = function(){
+    delete keysDown[38];
+    delete keysDown[40];
+    delete keysDown[37];
+    delete keysDown[39];
+    delete keysDown[87];
+    delete keysDown[83];
+    delete keysDown[65];
+    delete keysDown[68];
+}
 
 ////////////
 // * GAME HELPER FUNCTIONS
@@ -339,8 +352,6 @@ var makeMonster = function(){
         frame : 1, //the frame of the animation, 1 or 2, 3 for death
         deathTime : null,
         hitBox : {w:40,h:40,offset:12},
-        lastGoodX : 0,
-        lastGoodY : 0,
     };
     //todo fix get random tile
     //was 1-15, 1-10
@@ -412,6 +423,8 @@ var checkScreen = function( direction ){
 var moveScreen = function( moveToScreenId, direction ){
     moveToScreenId = moveToScreenId -1; //todo fix num vs id for 0 check
     var currentScreenId = getCurrentScreenId();
+    hero.moveTargetX = null;
+    hero.moveTargetY = null;
     switch(direction){
         case 'down':
             hero.y = 0;
@@ -508,6 +521,37 @@ var getJSON = function(url, callback) {
     xhr.send();
 };
 
+var getTileFromPos = function(pos){
+    var tileX = Math.floor(pos.x / options.grid.tileSize);
+    var tileY = Math.floor(pos.y / options.grid.tileSize);
+    
+    console.log('------');
+    console.log(tileX);
+    console.log(tileY);
+    console.log('------');
+    
+    if(tileX < 0 || tileY < 0){
+        return true;
+    }
+    
+    var j = ( (tileX) + ( (tileY) * options.grid.width ) ); //tileID
+
+    var currentScreenId = getCurrentScreenId();
+    var tile = world[currentScreenId].tiles[j];
+    
+    console.log(j);
+    console.log(tile.tileType);
+    
+    if( tile.tileType == 'rock' || tile.tileType == 'bush' ){
+        console.log('can not move there');
+        return false;
+    }else{
+        console.log('CAN move there');
+        return true;
+    }
+}
+
+
 ////////////
 // * UPDATE
 ////////////
@@ -525,35 +569,42 @@ var update = function (modifier) {
     if(state.gameState !== 'game') return;
     
     var currentScreenId = getCurrentScreenId();
+    var tileTest = null;
 
-    //save the last good hero POS rounded to a half tile point
-    hero.lastGoodX = Math.round(hero.x / (options.grid.tileSize / 2) ) * (options.grid.tileSize / 2);
-    hero.lastGoodY = Math.round(hero.y / (options.grid.tileSize / 2) ) * (options.grid.tileSize / 2);
-    
     if (38 in keysDown || 87 in keysDown) { // Player holding up or w
         if(hero.attacking == false){
-            hero.y -= hero.speed * modifier;
-            hero.lastDirection = 'u';
+            //hero.y -= hero.speed * modifier;
+            hero.moveTargetY = Math.floor( (hero.y-1) / (options.grid.tileSize / 2) ) * (options.grid.tileSize / 2) ;
+            hero.curDirection = 'u';
         }
     }
     if (40 in keysDown || 83 in keysDown) { // Player holding down or s
         if(hero.attacking == false){
-            hero.y += hero.speed * modifier;
-            hero.lastDirection = 'd';
+            //hero.y += hero.speed * modifier;
+            hero.moveTargetY = Math.ceil( (hero.y+1) / (options.grid.tileSize / 2) ) * (options.grid.tileSize / 2) ;
+            hero.curDirection = 'd';
         }
     }
+
+
+
     if (37 in keysDown || 65 in keysDown) { // Player holding left or a
         if(hero.attacking == false){
-            hero.x -= hero.speed * modifier;
-            hero.lastDirection = 'l';
+            //hero.x -= hero.speed * modifier;
+            hero.moveTargetX = Math.floor( (hero.x-1) / (options.grid.tileSize / 2) ) * (options.grid.tileSize / 2) ;
+            hero.curDirection = 'l';
         }
     }
     if (39 in keysDown || 68 in keysDown) { // Player holding right or d
         if(hero.attacking == false){
-            hero.x += hero.speed * modifier;
-            hero.lastDirection = 'r';
+            //hero.x += hero.speed * modifier;
+            hero.moveTargetX = Math.ceil( (hero.x+1) / (options.grid.tileSize / 2) ) * (options.grid.tileSize / 2) ;
+            hero.curDirection = 'r';
         }
     }
+
+
+
     if (32 in keysDown || 16 in keysDown) { // Player holding space or shift
         if(hero.attacking == false && hero.canAttack == true){
             hero.attack = true;
@@ -563,21 +614,62 @@ var update = function (modifier) {
         }
     }
 
-    if(
-        !(38 in keysDown) && !(87 in keysDown) && 
-        !(40 in keysDown) && !(83 in keysDown)
-    ){
-        //No More Y movement Keys... round Y to a half tile point
-        hero.y = Math.round(hero.y / (options.grid.tileSize / 2) ) * (options.grid.tileSize / 2);
+    // snap the hero to next half tile
+    // check last direction , set hero.moveTargetX or Y
+    var checkPos = {};
+    checkPos = { x:hero.x, y:hero.moveTargetY };
+    if(hero.moveTargetY > hero.y){
+        checkPos.y += (options.grid.tileSize / 2);
     }
 
-    if(
-        !(37 in keysDown) && !(65 in keysDown) && 
-        !(39 in keysDown) && !(68 in keysDown)
-    ){
-        //No More X movement Keys round X to a half tile point
-        hero.x = Math.round(hero.x / (options.grid.tileSize / 2) ) * (options.grid.tileSize / 2);
+    if( hero.moveTargetY !== null ){
+        
+        tileTest = getTileFromPos( checkPos );
+        if(tileTest == true){
+            if(hero.y > hero.moveTargetY){
+                hero.y -= hero.speed * modifier;
+            }
+            if(hero.y < hero.moveTargetY){
+                hero.y += hero.speed * modifier;
+            }
+            if(
+                Math.abs( hero.y - hero.moveTargetY ) < 5
+            ){
+                hero.y = hero.moveTargetY;
+                hero.moveTargetY = null;
+            }
+        }else{
+            hero.moveTargetY = null;
+        }
     }
+
+    checkPos = { x:hero.moveTargetX, y:hero.y };
+    if(hero.moveTargetX > hero.x){
+        checkPos.x += (options.grid.tileSize / 2);
+    }
+    if( hero.moveTargetX !== null ){
+        console.log('run X test');
+        tileTest = getTileFromPos( checkPos );
+        if(tileTest == true){
+            console.log('move x');
+            if(hero.x > hero.moveTargetX){
+                hero.x -= hero.speed * modifier;
+            }
+            if(hero.x < hero.moveTargetX){
+                hero.x += hero.speed * modifier;
+            }
+            if(
+                Math.abs( hero.x - hero.moveTargetX ) < 5
+            ){
+                hero.x = hero.moveTargetX;
+                hero.moveTargetX = null;
+            }
+        }else{
+            hero.moveTargetX = null;
+        }
+    }
+
+
 
     //attack check
     if(then - hero.lastAttack > ( 300) ){
@@ -595,7 +687,7 @@ var update = function (modifier) {
     var halfTile = options.grid.tileSize / 2;
     var eigthTile = options.grid.tileSize / 8;
 
-    if(hero.lastDirection == 'u'){
+    if(hero.curDirection == 'u'){
         sword.h = swordLong;
         sword.w = swordShort;
         sword.x = hero.x + halfTile - eigthTile;
@@ -603,7 +695,7 @@ var update = function (modifier) {
         sword.spriteX = hero.x;
         sword.spriteY = hero.y - options.grid.spriteFrameSize;
     }
-    if(hero.lastDirection == 'd'){
+    if(hero.curDirection == 'd'){
         sword.h = swordLong;
         sword.w = swordShort;
         sword.x = hero.x + halfTile - eigthTile;
@@ -611,7 +703,7 @@ var update = function (modifier) {
         sword.spriteX = hero.x;
         sword.spriteY = hero.y + options.grid.spriteFrameSize;
     }
-    if(hero.lastDirection == 'l'){
+    if(hero.curDirection == 'l'){
         sword.w = swordLong;
         sword.h = swordShort;
         sword.x = hero.x - swordLong;
@@ -619,7 +711,7 @@ var update = function (modifier) {
         sword.spriteX = hero.x - options.grid.spriteFrameSize;
         sword.spriteY = hero.y;
     }
-    if(hero.lastDirection == 'r'){
+    if(hero.curDirection == 'r'){
         sword.w = swordLong;
         sword.h = swordShort;
         sword.x = hero.x + options.grid.spriteFrameSize;
@@ -664,6 +756,7 @@ var update = function (modifier) {
     }
 
     /* HERO TEST TILES */
+    /*
     var j = 0; //tiles
     var tile = null;
     for( j = 0; j < world[currentScreenId].tiles.length; j++ ) {
@@ -674,12 +767,10 @@ var update = function (modifier) {
                 hero.y < (tile.ui.y + options.grid.tileSize) && (hero.y + options.grid.tileSize) > tile.ui.y
             ) {
                 console.log('hero in block!');
-                //todo fix to snap to block edge
-                //hero.x = hero.lastGoodX;
-                //hero.y = hero.lastGoodY;
             }
         }
     }
+    */
 
     /* MONSTER UPDATE LOOP */
     // move enemies
@@ -867,7 +958,7 @@ var render = function () {
     //ATTACK RENDER
     spriteX = 0;
     spriteY = 0;
-    switch(hero.lastDirection){
+    switch(hero.curDirection){
         case 'd':
             spriteX = options.grid.spriteFrameSize * 0;
         break;
@@ -903,7 +994,7 @@ var render = function () {
     //HERO RENDER
     spriteX = 0;
     spriteY = 0;
-    switch(hero.lastDirection){
+    switch(hero.curDirection){
         case 'd':
             spriteX = options.grid.spriteFrameSize * 0;
         break;
@@ -968,11 +1059,16 @@ var render = function () {
     }
 
     //Render Score
-    ctx.fillStyle = "rgb(0, 0, 0)";
+    ctx.fillStyle = "rgb(255, 255, 255)";
     ctx.font = "18px Helvetica";
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
     ctx.fillText("points: " + state.points, 10, 10);
+    ctx.fillText("cur: " + hero.curDirection, 10, 30);
+    ctx.fillText("X: " + hero.x, 10, 50);
+    ctx.fillText("Y: " + hero.y, 10, 70);
+    ctx.fillText("moveTargetX: " + hero.moveTargetX, 10, 90);
+    ctx.fillText("moveTargetY: " + hero.moveTargetY, 10, 110);
     
     //render screen state messages
     if(state.gameState == 'death'){

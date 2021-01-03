@@ -22,12 +22,14 @@ var state = {
     gameState : null, //'game','death','win'
     points : 0
 };
+
 var ticks = 0;
 var lastTick = 0;
 var world = null;
 
-/*create the canvas*/
-//var canvas = document.createElement("canvas");
+// optional create the canvas
+// var canvas = document.createElement("canvas");
+var w = window;
 var canvas = document.getElementById('game-canvas');
 var ctx = canvas.getContext("2d");
 canvas.width = options.screen.width;
@@ -36,36 +38,121 @@ canvas.id = 'game-canvas';
 
 var then = performance.now();
 
-//JS game resize for full screen
-function resizeGame() {
-    var gameArea = document.getElementById('game-area');
-    var widthToHeight = 3 / 2;
-    var newWidth = window.innerWidth;
-    var newHeight = window.innerHeight;
-    var newWidthToHeight = newWidth / newHeight;
-
-    if(newHeight > options.screen.height) newHeight = options.screen.height;
-    if(newWidth > options.screen.width)  newWidth = options.screen.width;
-
-    if (newWidthToHeight > widthToHeight) {
-        // window width is too wide relative to desired game width
-        newWidth = newHeight * widthToHeight;
-        gameArea.style.height = newHeight + 'px';
-        gameArea.style.width = newWidth + 'px';
-    } else { // window height is too high relative to desired game height
-        newHeight = newWidth / widthToHeight;
-        gameArea.style.width = newWidth + 'px';
-        gameArea.style.height = newHeight + 'px';
-    }
-
-    canvas.width = newWidth;
-    canvas.height = newHeight;
-}
 if(options.resizeGame == true){
     resizeGame();
     window.addEventListener('resize', resizeGame, false);
     window.addEventListener('orientationchange', resizeGame, false);
 }
+
+//requestAnimationFrame for all browsers
+requestAnimationFrame = w.requestAnimationFrame || w.webkitRequestAnimationFrame || w.msRequestAnimationFrame || w.mozRequestAnimationFrame;
+
+////////////
+// * Initialize the Game
+////////////
+
+var init = function(){
+    //test world data
+    var worldData = null;
+    getJSON('data/data.php',
+    function(err, data) {
+        if (err !== null) {
+            alert('Something went wrong: ' + err);
+        } else {
+            //todo fix up init, for now start the game after the data is loaded.
+            console.log('got some data');
+            console.log(data);
+            worldData = data;
+            world = new worldFactory(3,3);
+            console.log('here is the hard coded world');
+            console.log(world);
+            buildWorld();
+            buildWorldData(worldData);
+            resetHero();
+            resetMonster();
+            main();
+        }
+    });
+}
+
+////////////
+// * MAIN LOOP
+////////////
+
+var main = function () {
+    var now = Date.now();
+    var delta = now - then;
+    modifier = delta / 1000; //modifier in seconds
+    update(modifier);
+    render();
+    then = now;
+    requestAnimationFrame(main);
+}
+
+////////////
+// * KEYBOARD CONTROLS
+////////////
+
+var keysDown = {};
+
+addEventListener("keydown", function (e) {
+    e.preventDefault();
+    //clearMoveKeys();
+    keysDown[e.keyCode] = true;
+}, false);
+
+addEventListener("keyup", function (e) {
+    e.preventDefault();
+    delete keysDown[e.keyCode];
+}, false);
+
+//not used now
+var clearMoveKeys = function(){
+    delete keysDown[38];
+    delete keysDown[40];
+    delete keysDown[37];
+    delete keysDown[39];
+    delete keysDown[87];
+    delete keysDown[83];
+    delete keysDown[65];
+    delete keysDown[68];
+}
+
+////////////
+// * GAME RESOURCES / IMAGES
+////////////
+
+    // Background image
+    var bgReady = false;
+    var bgImage = new Image();
+    bgImage.src = 'images/tile-01.png';
+    bgImage.onload = function(){
+        bgReady = true;
+    }
+    
+    // Hero image
+    var heroReady = false;
+    var heroImage = new Image();
+    heroImage.onload = function () {
+        heroReady = true;
+    }
+    heroImage.src = "images/hero-skin-sprite.png";
+    
+    // Sword image
+    var swordReady = false;
+    var swordImage = new Image();
+    swordImage.onload = function () {
+        swordReady = true;
+    }
+    swordImage.src = "images/sword-sprite.png";
+    
+    // Monster image
+    var monsterReady = false;
+    var monsterImage = new Image();
+    monsterImage.onload = function () {
+        monsterReady = true;
+    }
+    monsterImage.src = "images/monster-001-sprite.png";
 
 ////////////
 // * GAME OBJECTS
@@ -97,41 +184,24 @@ var sword = {
     h: 10
 }
 
-////////////
-// * GAME RESOURCES / IMAGES
-////////////
-
-    // Background image
-    var bgReady = false;
-    var bgImage = new Image();
-    bgImage.src = 'images/tile-01.png';
-    bgImage.onload = function(){
-        bgReady = true;
-    }
-    
-    // Hero image
-    var heroReady = false;
-    var heroImage = new Image();
-    heroImage.onload = function () {
-        heroReady = true;
+var makeMonster = function(){
+    var monster = {
+        x: 0,
+        y: 0,
+        velX : 0,
+        velY : 0,
+        speed : 150,
+        status : 'alive', //alive, dead
+        frame : 1, //the frame of the animation, 1 or 2, 3 for death
+        deathTime : null,
+        hitBox : {w:40,h:40,offset:12},
     };
-    heroImage.src = "images/hero-skin-sprite.png";
-    
-    // Sword image
-    var swordReady = false;
-    var swordImage = new Image();
-    swordImage.onload = function () {
-        swordReady = true;
-    };
-    swordImage.src = "images/sword-sprite.png";
-    
-    // Monster image
-    var monsterReady = false;
-    var monsterImage = new Image();
-    monsterImage.onload = function () {
-        monsterReady = true;
-    };
-    monsterImage.src = "images/monster-001-sprite.png";
+    //todo fix get random tile
+    //was 1-15, 1-10
+    monster.x = ranomdNumberRange(3,13) * options.grid.tileSize - options.grid.tileSize;
+    monster.y = ranomdNumberRange(3,8) * options.grid.tileSize - options.grid.tileSize;
+    return monster;
+}
 
 ////////////
 // * WORLD AND SCREENS
@@ -167,7 +237,7 @@ const screenFactory = function(id,num,col,row) {
         tiles : []
     };
     return screen;
-};
+}
 
 const tileFactory = function(num,col,row,tileType,x,y,color) {
     var tile = {
@@ -196,10 +266,9 @@ const tileFactory = function(num,col,row,tileType,x,y,color) {
         tile.ui.image.src = 'images/tile-door.png';
     }
     return tile;
-};
+}
 
-//fill in a world map with screen types and contents
-//set the starting screen
+//set the starting screen and fill in a world obj with contents
 const buildWorld = function(){
     
     state.gameState = 'game';
@@ -249,6 +318,7 @@ const buildWorld = function(){
     }
 }
 
+//loop the world obj and build each screen with tileFactory
 const buildWorldData = function(data){
     var screenData = data.world.screens;
     var i = 0; //screens
@@ -268,37 +338,12 @@ const buildWorldData = function(data){
 }
 
 ////////////
-// * KEYBOARD CONTROLS
-////////////
-
-var keysDown = {};
-
-addEventListener("keydown", function (e) {
-    e.preventDefault();
-    //clearMoveKeys();
-    keysDown[e.keyCode] = true;
-}, false);
-
-addEventListener("keyup", function (e) {
-    e.preventDefault();
-    delete keysDown[e.keyCode];
-}, false);
-
-//not used now
-var clearMoveKeys = function(){
-    delete keysDown[38];
-    delete keysDown[40];
-    delete keysDown[37];
-    delete keysDown[39];
-    delete keysDown[87];
-    delete keysDown[83];
-    delete keysDown[65];
-    delete keysDown[68];
-}
-
-////////////
 // * GAME HELPER FUNCTIONS
 ////////////
+
+var cl = function(msg){
+    console.log(msg);
+}
 
 var setUi = function (x,y,w,h,color,ox,oy,io){
     return{
@@ -314,10 +359,6 @@ var setUi = function (x,y,w,h,color,ox,oy,io){
 
 var ranomdNumberRange = function(min, max) { // min and max included
   return Math.floor(Math.random() * (max - min + 1) + min);
-}
-
-var cl = function(msg){
-    console.log(msg);
 }
 
 //reset the game for a new try
@@ -339,25 +380,6 @@ var resetMonster = function () {
         monster = makeMonster();
         monsters.push(monster);
     }
-};
-
-var makeMonster = function(){
-    var monster = {
-        x: 0,
-        y: 0,
-        velX : 0,
-        velY : 0,
-        speed : 150,
-        status : 'alive', //alive, dead
-        frame : 1, //the frame of the animation, 1 or 2, 3 for death
-        deathTime : null,
-        hitBox : {w:40,h:40,offset:12},
-    };
-    //todo fix get random tile
-    //was 1-15, 1-10
-    monster.x = ranomdNumberRange(3,13) * options.grid.tileSize - options.grid.tileSize;
-    monster.y = ranomdNumberRange(3,8) * options.grid.tileSize - options.grid.tileSize;
-    return monster;
 }
 
 var resetHero = function () {
@@ -365,7 +387,7 @@ var resetHero = function () {
     world[currentScreenId].isCurrent = false;
     world[7].isCurrent = true;
     hero.status = 'alive';
-    
+
     //hero.x = ranomdNumberRange(2,14) * options.grid.tileSize - options.grid.tileSize;
     //hero.y = ranomdNumberRange(2,9) * options.grid.tileSize - options.grid.tileSize;
     //todo find an empty tile in the current screen
@@ -420,6 +442,7 @@ var checkScreen = function( direction ){
         }
     }
 }
+
 var moveScreen = function( moveToScreenId, direction ){
     moveToScreenId = moveToScreenId -1; //todo fix num vs id for 0 check
     var currentScreenId = getCurrentScreenId();
@@ -443,6 +466,7 @@ var moveScreen = function( moveToScreenId, direction ){
     world[moveToScreenId].isCurrent = true;
     resetMonster();
 }
+
 var getCurrentScreenId = function(){
     var i = 0;
     var loopLength = world.length;
@@ -452,6 +476,7 @@ var getCurrentScreenId = function(){
         }
     }
 }
+
 var getCurrentScreenNum = function(){
     var currentScreenId = getCurrentScreenId();
     return world[currentScreenId].num;
@@ -478,34 +503,6 @@ var showScreen = function(screenSlug){
     }
 }
 
-////////////
-// * Initialize the Game
-////////////
-
-var init = function(){
-    //test world data
-    var worldData = null;
-    getJSON('data/data.php',
-    function(err, data) {
-        if (err !== null) {
-            alert('Something went wrong: ' + err);
-        } else {
-            //todo fix up init, for now start the game after the data is loaded.
-            console.log('got some data');
-            console.log(data);
-            worldData = data;
-            world = new worldFactory(3,3);
-            console.log('here is the hard coded world');
-            console.log(world);
-            buildWorld();
-            buildWorldData(worldData);
-            resetHero();
-            resetMonster();
-            main();
-        }
-    });
-}
-
 var getJSON = function(url, callback) {
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
@@ -519,7 +516,7 @@ var getJSON = function(url, callback) {
         }
     };
     xhr.send();
-};
+}
 
 var getTileFromPos = function(pos){
     var tileX = Math.floor(pos.x / options.grid.tileSize);
@@ -551,582 +548,31 @@ var getTileFromPos = function(pos){
     }
 }
 
+//JS game resize for full screen
+function resizeGame() {
+    var gameArea = document.getElementById('game-area');
+    var widthToHeight = 3 / 2;
+    var newWidth = window.innerWidth;
+    var newHeight = window.innerHeight;
+    var newWidthToHeight = newWidth / newHeight;
 
-////////////
-// * UPDATE
-////////////
+    if(newHeight > options.screen.height) newHeight = options.screen.height;
+    if(newWidth > options.screen.width)  newWidth = options.screen.width;
 
-var update = function (modifier) {
-
-    //death screen state
-    if(state.gameState == 'death' || state.gameState == 'win'){
-        if (27 in keysDown || 13 in keysDown) { // Player holding esc or return
-            resetGame();
-        }
+    if (newWidthToHeight > widthToHeight) {
+        // window width is too wide relative to desired game width
+        newWidth = newHeight * widthToHeight;
+        gameArea.style.height = newHeight + 'px';
+        gameArea.style.width = newWidth + 'px';
+    } else { // window height is too high relative to desired game height
+        newHeight = newWidth / widthToHeight;
+        gameArea.style.width = newWidth + 'px';
+        gameArea.style.height = newHeight + 'px';
     }
 
-    //game play update, return if not in game state
-    if(state.gameState !== 'game') return;
-    
-    var currentScreenId = getCurrentScreenId();
-    var tileTest = null;
-
-    if (38 in keysDown || 87 in keysDown) { // Player holding up or w
-        if(hero.attacking == false){
-            //hero.y -= hero.speed * modifier;
-            hero.moveTargetY = Math.floor( (hero.y-1) / (options.grid.tileSize / 2) ) * (options.grid.tileSize / 2) ;
-            hero.curDirection = 'u';
-        }
-    }
-    if (40 in keysDown || 83 in keysDown) { // Player holding down or s
-        if(hero.attacking == false){
-            //hero.y += hero.speed * modifier;
-            hero.moveTargetY = Math.ceil( (hero.y+1) / (options.grid.tileSize / 2) ) * (options.grid.tileSize / 2) ;
-            hero.curDirection = 'd';
-        }
-    }
-
-
-
-    if (37 in keysDown || 65 in keysDown) { // Player holding left or a
-        if(hero.attacking == false){
-            //hero.x -= hero.speed * modifier;
-            hero.moveTargetX = Math.floor( (hero.x-1) / (options.grid.tileSize / 2) ) * (options.grid.tileSize / 2) ;
-            hero.curDirection = 'l';
-        }
-    }
-    if (39 in keysDown || 68 in keysDown) { // Player holding right or d
-        if(hero.attacking == false){
-            //hero.x += hero.speed * modifier;
-            hero.moveTargetX = Math.ceil( (hero.x+1) / (options.grid.tileSize / 2) ) * (options.grid.tileSize / 2) ;
-            hero.curDirection = 'r';
-        }
-    }
-
-
-
-    if (32 in keysDown || 16 in keysDown) { // Player holding space or shift
-        if(hero.attacking == false && hero.canAttack == true){
-            hero.attack = true;
-            hero.lastAttack = then;
-            hero.attacking = true;
-            hero.canAttack = false;
-        }
-    }
-
-    // snap the hero to next half tile
-    // check last direction , set hero.moveTargetX or Y
-    var checkPos = {};
-    checkPos = { x:hero.x, y:hero.moveTargetY };
-    if(hero.moveTargetY > hero.y){
-        checkPos.y += (options.grid.tileSize / 2);
-    }
-
-    if( hero.moveTargetY !== null ){
-        
-        tileTest = getTileFromPos( checkPos );
-        if(tileTest == true){
-            if(hero.y > hero.moveTargetY){
-                hero.y -= hero.speed * modifier;
-            }
-            if(hero.y < hero.moveTargetY){
-                hero.y += hero.speed * modifier;
-            }
-            if(
-                Math.abs( hero.y - hero.moveTargetY ) < 5
-            ){
-                hero.y = hero.moveTargetY;
-                hero.moveTargetY = null;
-            }
-        }else{
-            hero.moveTargetY = null;
-        }
-    }
-
-    checkPos = { x:hero.moveTargetX, y:hero.y };
-    if(hero.moveTargetX > hero.x){
-        checkPos.x += (options.grid.tileSize / 2);
-    }
-    if( hero.moveTargetX !== null ){
-        console.log('run X test');
-        tileTest = getTileFromPos( checkPos );
-        if(tileTest == true){
-            console.log('move x');
-            if(hero.x > hero.moveTargetX){
-                hero.x -= hero.speed * modifier;
-            }
-            if(hero.x < hero.moveTargetX){
-                hero.x += hero.speed * modifier;
-            }
-            if(
-                Math.abs( hero.x - hero.moveTargetX ) < 5
-            ){
-                hero.x = hero.moveTargetX;
-                hero.moveTargetX = null;
-            }
-        }else{
-            hero.moveTargetX = null;
-        }
-    }
-
-
-
-    //attack check
-    if(then - hero.lastAttack > ( 300) ){
-        hero.attack = false;
-        hero.attacking = false;
-    }
-    if(then - hero.lastAttack > ( 500 ) ){
-        hero.canAttack = true;
-    }
-
-    // SWORD
-    var swordLong = (options.grid.tileSize / 3) * 2;
-        swordLong = 64;
-    var swordShort = options.grid.tileSize / 4;
-    var halfTile = options.grid.tileSize / 2;
-    var eigthTile = options.grid.tileSize / 8;
-
-    if(hero.curDirection == 'u'){
-        sword.h = swordLong;
-        sword.w = swordShort;
-        sword.x = hero.x + halfTile - eigthTile;
-        sword.y = hero.y - swordLong;
-        sword.spriteX = hero.x;
-        sword.spriteY = hero.y - options.grid.spriteFrameSize;
-    }
-    if(hero.curDirection == 'd'){
-        sword.h = swordLong;
-        sword.w = swordShort;
-        sword.x = hero.x + halfTile - eigthTile;
-        sword.y = hero.y + options.grid.spriteFrameSize;
-        sword.spriteX = hero.x;
-        sword.spriteY = hero.y + options.grid.spriteFrameSize;
-    }
-    if(hero.curDirection == 'l'){
-        sword.w = swordLong;
-        sword.h = swordShort;
-        sword.x = hero.x - swordLong;
-        sword.y = hero.y + halfTile - eigthTile;
-        sword.spriteX = hero.x - options.grid.spriteFrameSize;
-        sword.spriteY = hero.y;
-    }
-    if(hero.curDirection == 'r'){
-        sword.w = swordLong;
-        sword.h = swordShort;
-        sword.x = hero.x + options.grid.spriteFrameSize;
-        sword.y = hero.y + halfTile - eigthTile;
-        sword.spriteX = hero.x + options.grid.spriteFrameSize;
-        sword.spriteY = hero.y;
-    }
-
-    /**
-        EDGE TEST
-        HERO ON EDGE
-        MOVE TO SCREEN IF POSSILBE
-    **/
-    // X Edge
-    var moveToScreenId = null;
-    if (hero.x > canvas.width - options.grid.spriteFrameSize) { //right edge
-        if( moveToScreenId = checkScreen('right') ){
-            moveScreen(moveToScreenId,'right');
-        }else{
-            hero.x = canvas.width - options.grid.spriteFrameSize;
-        }
-    }else if (hero.x < 0) { //left edge
-        if( moveToScreenId = checkScreen('left') ){
-            moveScreen(moveToScreenId,'left');
-        }else{
-            hero.x = 0;
-        }
-    }
-    // Y Edge
-    if (hero.y > canvas.height - options.grid.spriteFrameSize) { //bottom edge
-        if( moveToScreenId = checkScreen('down') ){
-            moveScreen(moveToScreenId,'down');
-        }else{
-            hero.y = canvas.height - options.grid.spriteFrameSize;
-        }
-    }else if (hero.y < 0) { //top edge
-        if( moveToScreenId = checkScreen('up') ){
-            moveScreen(moveToScreenId,'up');
-        }else{
-            hero.y = 0;
-        }
-    }
-
-    /* HERO TEST TILES */
-    /*
-    var j = 0; //tiles
-    var tile = null;
-    for( j = 0; j < world[currentScreenId].tiles.length; j++ ) {
-        tile = world[currentScreenId].tiles[j];
-        if ( tile.tileType == 'rock' || tile.tileType == 'bush' ){
-            if (
-                hero.x < (tile.ui.x + options.grid.tileSize) && (hero.x + options.grid.tileSize) > tile.ui.x &&
-                hero.y < (tile.ui.y + options.grid.tileSize) && (hero.y + options.grid.tileSize) > tile.ui.y
-            ) {
-                console.log('hero in block!');
-            }
-        }
-    }
-    */
-
-    /* MONSTER UPDATE LOOP */
-    // move enemies
-    var monsterCheckNum = 0;
-    if(monsters.length <= 0) return;
-    for(monsterCheckNum = monsters.length - 1; monsterCheckNum >= 0; monsterCheckNum--){
-        var monster = monsters[monsterCheckNum];
-        if(monster.status == 'alive'){
-            //switch monster movement
-            var monsterSwitchChance = ranomdNumberRange(1,300);
-            if(monsterSwitchChance < 2){
-                monster.velX = 1;
-            }else if(monsterSwitchChance < 4){
-                monster.velX = -1;
-            }else if(monsterSwitchChance < 6){
-                monster.velY = 1;
-            }else if(monsterSwitchChance < 8){
-                monster.velY = -1;
-            }else if(monsterSwitchChance < 10){
-                monster.velY = 0;
-            }else if(monsterSwitchChance < 12){
-                monster.velY = 0;
-            }
-            monster.lastGoodX = monster.x;
-            monster.lastGoodY = monster.y;
-            //move the monster
-            monster.x += monster.velX * monster.speed * modifier;
-            monster.y += monster.velY * monster.speed * modifier;
-        }
-
-        // HIT TEST // ATTACK HITS // Monster Dies
-        if (
-            hero.attack == true
-            && sword.x <= (monster.x + options.grid.tileSize)
-            && monster.x <= (sword.x + options.grid.tileSize)
-            && sword.y <= (monster.y + options.grid.tileSize)
-            && monster.y <= (sword.y + options.grid.tileSize)
-            && monster.status == 'alive'
-        ) {
-            state.points++;
-            monster.frame = 3; //3 = death frame
-            monster.status = 'dead';
-            monster.deathTime = then;
-            world[currentScreenId].contains.numberOfMonsters--;
-            //check for win{
-            if( checkMonstersLeft() === true ){
-                showScreen('win');
-                return;
-            }
-        }
-
-        // EDGE TEST // turn monster on edge
-        if (monster.x >= canvas.width - options.grid.spriteFrameSize) {
-            monster.x = canvas.width - options.grid.spriteFrameSize;
-            monster.velX = -1;
-        }
-        else if (monster.x <= 0) {
-            monster.x = 0;
-            monster.velX = 1;
-        }
-        if (monster.y >= canvas.height - options.grid.spriteFrameSize) {
-            monster.y = canvas.height - options.grid.spriteFrameSize;
-            monster.velY = -1;
-        }
-        else if (monster.y <= 0) {
-            monster.y = 0;
-            monster.velY = 1;
-        }
-
-        // MONSTER TILE TEST
-        var j = 0; //tiles
-        var tile = null;
-        for( j = 0; j < world[currentScreenId].tiles.length; j++ ) {
-            tile = world[currentScreenId].tiles[j];
-            if (
-                (tile.tileType == 'rock' || tile.tileType == 'bush') && 
-                monster.x < (tile.ui.x + options.grid.tileSize) && (monster.x + options.grid.tileSize) > tile.ui.x &&
-                monster.y < (tile.ui.y + options.grid.tileSize) && (monster.y + options.grid.tileSize) > tile.ui.y
-            ) {
-                monster.x = monster.lastGoodX;
-                monster.y = monster.lastGoodY;
-                monster.velX = monster.velX * -1;
-                monster.velY = monster.velY * -1;
-            }
-        }
-
-        // HIT TEST // hero touching monster // Hero Dies!
-        if (
-            hero.x + hero.hitBox.offset <= (monster.x + monster.hitBox.offset + monster.hitBox.w) //M width
-            && monster.x + monster.hitBox.offset <= (hero.x + hero.hitBox.offset + hero.hitBox.w) //H width
-            && hero.y + hero.hitBox.offset <= (monster.y + monster.hitBox.offset + monster.hitBox.h) //M height
-            && monster.y + monster.hitBox.offset <= (hero.y + hero.hitBox.offset + hero.hitBox.h) //H height
-            && monster.status == 'alive'
-        ) {
-            hero.status = 'dead';
-            showScreen('death');
-            return;
-        }
-
-    }//END MONSTER CHECK LOOP
-
-    //set ticks
-    if( (then - lastTick) > (250) ){
-        lastTick = then;
-        ticks++;
-        //monster tick loop
-        for(i=0;i<monsters.length;i++){
-            //animate monster frame
-            if(monsters[i].frame == 1){
-                monsters[i].frame = 2;
-            }else if(monsters[i].frame == 2){
-                monsters[i].frame = 1;
-            }
-        }
-    }
-    
-    //clean up destoryed monsters
-    for(monsterCheckNum = monsters.length - 1; monsterCheckNum >= 0; monsterCheckNum--){
-        if(monsters[monsterCheckNum].status == 'dead' && ( then - monsters[monsterCheckNum].deathTime > 250 ) ){
-            monsters.splice(monsterCheckNum,1);
-        }
-    }
-
-};
-
-////////////
-// * RENDER
-////////////
-
-var render = function () {
-
-    //BOARD RENDER REPEAT TILE FOR BACKGROUND
-    if (bgReady) {
-        ctx.drawImage(bgImage, 0, 0);
-        var ptrn = ctx.createPattern(bgImage, 'repeat');
-        ctx.fillStyle = ptrn;
-        ctx.fillRect(0, 0, canvas.width, canvas.height); // context.fillRect(x, y, width, height);
-    }
-    
-    // RENDER SCREEN TILES // started from renderBoard in og-tools render.js
-    var renderScreen = function () {
-        var screenId = getCurrentScreenId();
-        var tiles = world[screenId].tiles;
-        var i = 0;
-        var loopLength = tiles.length;
-        var tile = null;
-        for(i; i < loopLength; i++) {
-            tile = tiles[i];
-            ctx.fillStyle = tile.ui.color;
-            ctx.fillRect(tile.ui.x,tile.ui.y,options.grid.tileSize,options.grid.tileSize);
-            if(tile.ui.image.src){
-                ctx.drawImage(tile.ui.image, tile.ui.x - tile.ui.imageOffset, tile.ui.y - tile.ui.imageOffset);
-            }
-        }
-    }(); //TODO for now just call this inside render
-
-    //sprite x frame based on d,r,u,l
-    var spriteX = 0;
-    var spriteY = 0;
-
-    //MONSTER RENDER LOOP
-    for(i=0;i<monsters.length;i++){
-        spriteX = (monsters[i].frame - 1) * options.grid.spriteFrameSize;
-        spriteY = 0;
-        if (monsterReady) {
-            ctx.drawImage(
-                monsterImage,                                   //image
-                spriteX, spriteY,                               //image in slice
-                options.grid.spriteFrameSize, options.grid.spriteFrameSize,   //size of slice
-                monsters[i].x, monsters[i].y,                   //image pos
-                options.grid.spriteFrameSize, options.grid.spriteFrameSize    //size of image
-            );
-        }
-        if(options.showHitBoxes == true){
-            ctx.globalAlpha = 0.4;
-            ctx.beginPath();
-            ctx.rect(monsters[i].x + monsters[i].hitBox.offset, monsters[i].y + monsters[i].hitBox.offset, monsters[i].hitBox.w, monsters[i].hitBox.h);
-            ctx.fillStyle = "purple";
-            ctx.fill();
-            ctx.globalAlpha = 1;
-        }
-    }
-    //end monster render loop
-
-    //ATTACK RENDER
-    spriteX = 0;
-    spriteY = 0;
-    switch(hero.curDirection){
-        case 'd':
-            spriteX = options.grid.spriteFrameSize * 0;
-        break;
-        case 'r':
-            spriteX = options.grid.spriteFrameSize * 1;
-        break;
-        case 'u':
-            spriteX = options.grid.spriteFrameSize * 2;
-        break;
-        case 'l':
-            spriteX = options.grid.spriteFrameSize * 3;
-        break;
-    }
-
-    if(hero.attack == true) {
-        ctx.drawImage(
-            swordImage,                                     //image
-            spriteX, spriteY,                               //image in slice
-            options.grid.spriteFrameSize, options.grid.spriteFrameSize,   //size of slice
-            sword.spriteX, sword.spriteY,                   //image pos
-            options.grid.spriteFrameSize, options.grid.spriteFrameSize    //size of image
-        );
-        if(options.showHitBoxes == true){
-            ctx.globalAlpha = 0.4;
-            ctx.beginPath();
-            ctx.rect(sword.x, sword.y, sword.w, sword.h);
-            ctx.fillStyle = "red";
-            ctx.fill();
-            ctx.globalAlpha = 1;
-        }
-    }
-
-    //HERO RENDER
-    spriteX = 0;
-    spriteY = 0;
-    switch(hero.curDirection){
-        case 'd':
-            spriteX = options.grid.spriteFrameSize * 0;
-        break;
-        case 'r':
-            spriteX = options.grid.spriteFrameSize * 1;
-        break;
-        case 'u':
-            spriteX = options.grid.spriteFrameSize * 2;
-        break;
-        case 'l':
-            spriteX = options.grid.spriteFrameSize * 3;
-        break;
-    }
-    if (heroReady) {
-        if(hero.attack == true) {
-            spriteY = 64;
-        }
-        if(hero.status == 'dead') {
-            spriteX = 256;
-            spriteY = 0;
-        }
-        ctx.drawImage(
-            heroImage,                                      //image
-            spriteX, spriteY,                               //image in slice
-            options.grid.spriteFrameSize, options.grid.spriteFrameSize,   //size of slice
-            hero.x, hero.y,                                 //image pos
-            options.grid.spriteFrameSize, options.grid.spriteFrameSize    //size of image
-        );
-        if(options.showHitBoxes == true){
-            ctx.globalAlpha = 0.4;
-            ctx.beginPath();
-            ctx.rect(hero.x + hero.hitBox.offset, hero.y + hero.hitBox.offset, hero.hitBox.w, hero.hitBox.h);
-            ctx.fillStyle = "blue";
-            ctx.fill();
-            ctx.globalAlpha = 1;
-        }
-    }
-
-    //render heads up map
-    var i = 0;
-    var loopLength = world.length;
-    var tile = null;
-    var xStart = options.screen.width - 30;
-    var x = xStart;
-    var y = 10;
-    var lastRow = 0;
-
-    for(i; i < loopLength; i++) {
-        tile = world[i];
-        if(tile.row !== lastRow){
-            y += 5;
-            x = xStart;
-        }
-        ctx.fillStyle = 'red';
-        ctx.fillRect(x,y,4,4);
-        if( tile.isCurrent === true ){
-            ctx.fillStyle = 'yellow';
-            ctx.fillRect(x,y,4,4);
-        }
-        x += 5;
-        lastRow = tile.row;
-    }
-
-    //Render Score
-    ctx.fillStyle = "rgb(255, 255, 255)";
-    ctx.font = "18px Helvetica";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "top";
-    ctx.fillText("points: " + state.points, 10, 10);
-    ctx.fillText("cur: " + hero.curDirection, 10, 30);
-    ctx.fillText("X: " + hero.x, 10, 50);
-    ctx.fillText("Y: " + hero.y, 10, 70);
-    ctx.fillText("moveTargetX: " + hero.moveTargetX, 10, 90);
-    ctx.fillText("moveTargetY: " + hero.moveTargetY, 10, 110);
-    
-    //render screen state messages
-    if(state.gameState == 'death'){
-        ctx.fillStyle = "rgb(0, 0, 0)";
-        ctx.textAlign = "left";
-        ctx.textBaseline = "top";
-
-        ctx.font = "120px Helvetica";
-        ctx.fillStyle = "rgb(255, 255, 255)";
-        ctx.fillText("You Died!", 60, 200);
-        ctx.fillStyle = "rgb(0, 0, 0)";
-        ctx.fillText("You Died!", 62, 202);
-        
-        ctx.font = "60px Helvetica";
-        ctx.fillStyle = "rgb(255, 255, 255)";
-        ctx.fillText("ESC or RETURN to try again.", 80, 350);
-        ctx.fillStyle = "rgb(0, 0, 0)";
-        ctx.fillText("ESC or RETURN to try again.", 82, 352);
-    }
-    if(state.gameState == 'win'){
-        ctx.fillStyle = "rgb(0, 0, 0)";
-        ctx.textAlign = "left";
-        ctx.textBaseline = "top";
-
-        ctx.font = "120px Helvetica";
-        ctx.fillStyle = "rgb(255, 255, 255)";
-        ctx.fillText("You Win!", 60, 200);
-        ctx.fillStyle = "rgb(0, 0, 0)";
-        ctx.fillText("You Win!", 62, 202);
-        
-        ctx.font = "60px Helvetica";
-        ctx.fillStyle = "rgb(255, 255, 255)";
-        ctx.fillText("ESC or RETURN to play again.", 80, 350);
-        ctx.fillStyle = "rgb(0, 0, 0)";
-        ctx.fillText("ESC or RETURN to play again.", 82, 352);
-    }
-};
-
-////////////
-// * MAIN LOOP
-////////////
-
-var main = function () {
-    var now = Date.now();
-    var delta = now - then;
-    modifier = delta / 1000; //modifier in seconds
-    update(modifier);
-    render();
-    then = now;
-    requestAnimationFrame(main);
-};
-
-////////////
-// * requestAnimationFrame for all browsers
-////////////
-
-var w = window;
-requestAnimationFrame = w.requestAnimationFrame || w.webkitRequestAnimationFrame || w.msRequestAnimationFrame || w.mozRequestAnimationFrame;
+    canvas.width = newWidth;
+    canvas.height = newHeight;
+}
 
 ////////////
 // * START THE GAME

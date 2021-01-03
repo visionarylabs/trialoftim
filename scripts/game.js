@@ -13,6 +13,7 @@ options.screen.width = 960;
 options.screen.height = 640;
 options.grid = {}
 options.grid.tileSize = 64;
+options.grid.gridSnapSize = options.grid.tileSize / 4;
 options.grid.spriteFrameSize = 64;
 options.grid.width = 15;
 options.grid.height = 10;
@@ -97,7 +98,7 @@ var keysDown = {};
 
 addEventListener("keydown", function (e) {
     e.preventDefault();
-    //clearMoveKeys();
+    clearMoveKeys();
     keysDown[e.keyCode] = true;
 }, false);
 
@@ -171,10 +172,6 @@ var hero = {
     curDirection : 'd',
     hitBox : {w:40,h:40,offset:12},
     status : 'alive', //'alive','dead'
-    lastGoodX : 0,
-    lastGoodY : 0,
-    moveTargetX : null,
-    moveTargetY : null
 };
 
 var sword = {
@@ -190,6 +187,8 @@ var makeMonster = function(){
         y: 0,
         velX : 0,
         velY : 0,
+        lastGoodX : 0,
+        lastGoodY : 0,
         speed : 150,
         status : 'alive', //alive, dead
         frame : 1, //the frame of the animation, 1 or 2, 3 for death
@@ -446,8 +445,6 @@ var checkScreen = function( direction ){
 var moveScreen = function( moveToScreenId, direction ){
     moveToScreenId = moveToScreenId -1; //todo fix num vs id for 0 check
     var currentScreenId = getCurrentScreenId();
-    hero.moveTargetX = null;
-    hero.moveTargetY = null;
     switch(direction){
         case 'down':
             hero.y = 0;

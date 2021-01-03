@@ -16,18 +16,50 @@ var update = function (modifier) {
     
     var currentScreenId = getCurrentScreenId();
     var tileTest = null;
+    var heroPosSnap = {
+        x : null,
+        y : null,
+        xCeil : null,
+        xFloor : null,
+        yCeil : null,
+        yFloor : null,
+    };
+
+    /**
+        SNAPPING
+        HERO SNAP TO GRID
+    **/
+    heroPosSnap.xCeil = Math.ceil(hero.x / options.grid.gridSnapSize) * options.grid.gridSnapSize;
+    heroPosSnap.xFloor = Math.floor(hero.x / options.grid.gridSnapSize) * options.grid.gridSnapSize;
+    if( Math.abs(hero.x - heroPosSnap.xCeil) < Math.abs(hero.x - heroPosSnap.xFloor)){
+        heroPosSnap.x = heroPosSnap.xCeil;
+    }else{
+        heroPosSnap.x = heroPosSnap.xFloor;
+    }
+
+    heroPosSnap.yCeil = Math.ceil(hero.y / options.grid.gridSnapSize) * options.grid.gridSnapSize;
+    heroPosSnap.yFloor = Math.floor(hero.y / options.grid.gridSnapSize) * options.grid.gridSnapSize;
+    if( Math.abs(hero.y - heroPosSnap.yCeil) < Math.abs(hero.y - heroPosSnap.yFloor)){
+        heroPosSnap.y = heroPosSnap.yCeil;
+    }else{
+        heroPosSnap.y = heroPosSnap.yFloor;
+    }
 
     if (38 in keysDown || 87 in keysDown) { // Player holding up or w
         if(hero.attacking == false){
-            //hero.y -= hero.speed * modifier;
-            hero.moveTargetY = Math.floor( (hero.y-1) / (options.grid.tileSize / 2) ) * (options.grid.tileSize / 2) ;
+            if(hero.curDirection != 'u'){
+                hero.x = heroPosSnap.x;
+            }
+            hero.y -= hero.speed * modifier;
             hero.curDirection = 'u';
         }
     }
     if (40 in keysDown || 83 in keysDown) { // Player holding down or s
         if(hero.attacking == false){
-            //hero.y += hero.speed * modifier;
-            hero.moveTargetY = Math.ceil( (hero.y+1) / (options.grid.tileSize / 2) ) * (options.grid.tileSize / 2) ;
+            if(hero.curDirection != 'd'){
+                hero.x = heroPosSnap.x;
+            }
+            hero.y += hero.speed * modifier;
             hero.curDirection = 'd';
         }
     }
@@ -36,15 +68,19 @@ var update = function (modifier) {
 
     if (37 in keysDown || 65 in keysDown) { // Player holding left or a
         if(hero.attacking == false){
-            //hero.x -= hero.speed * modifier;
-            hero.moveTargetX = Math.floor( (hero.x-1) / (options.grid.tileSize / 2) ) * (options.grid.tileSize / 2) ;
+            if(hero.curDirection != 'l'){
+                hero.y = heroPosSnap.y;
+            }
+            hero.x -= hero.speed * modifier;
             hero.curDirection = 'l';
         }
     }
     if (39 in keysDown || 68 in keysDown) { // Player holding right or d
         if(hero.attacking == false){
-            //hero.x += hero.speed * modifier;
-            hero.moveTargetX = Math.ceil( (hero.x+1) / (options.grid.tileSize / 2) ) * (options.grid.tileSize / 2) ;
+            if(hero.curDirection != 'r'){
+                hero.y = heroPosSnap.y;
+            }
+            hero.x += hero.speed * modifier;
             hero.curDirection = 'r';
         }
     }
@@ -59,63 +95,6 @@ var update = function (modifier) {
             hero.canAttack = false;
         }
     }
-
-    // snap the hero to next half tile
-    // check last direction , set hero.moveTargetX or Y
-    var checkPos = {};
-    checkPos = { x:hero.x, y:hero.moveTargetY };
-    if(hero.moveTargetY > hero.y){
-        checkPos.y += (options.grid.tileSize / 2);
-    }
-
-    if( hero.moveTargetY !== null ){
-        
-        tileTest = getTileFromPos( checkPos );
-        if(tileTest == true){
-            if(hero.y > hero.moveTargetY){
-                hero.y -= hero.speed * modifier;
-            }
-            if(hero.y < hero.moveTargetY){
-                hero.y += hero.speed * modifier;
-            }
-            if(
-                Math.abs( hero.y - hero.moveTargetY ) < 5
-            ){
-                hero.y = hero.moveTargetY;
-                hero.moveTargetY = null;
-            }
-        }else{
-            hero.moveTargetY = null;
-        }
-    }
-
-    checkPos = { x:hero.moveTargetX, y:hero.y };
-    if(hero.moveTargetX > hero.x){
-        checkPos.x += (options.grid.tileSize / 2);
-    }
-    if( hero.moveTargetX !== null ){
-        console.log('run X test');
-        tileTest = getTileFromPos( checkPos );
-        if(tileTest == true){
-            console.log('move x');
-            if(hero.x > hero.moveTargetX){
-                hero.x -= hero.speed * modifier;
-            }
-            if(hero.x < hero.moveTargetX){
-                hero.x += hero.speed * modifier;
-            }
-            if(
-                Math.abs( hero.x - hero.moveTargetX ) < 5
-            ){
-                hero.x = hero.moveTargetX;
-                hero.moveTargetX = null;
-            }
-        }else{
-            hero.moveTargetX = null;
-        }
-    }
-
-
 
     //attack check
     if(then - hero.lastAttack > ( 300) ){
@@ -167,6 +146,36 @@ var update = function (modifier) {
     }
 
     /**
+        TILE HIT TEST
+        HERO HITS A TILE
+    **/
+    var j = 0; //tiles
+    var tile = null;
+    for( j = 0; j < world[currentScreenId].tiles.length; j++ ) {
+        tile = world[currentScreenId].tiles[j];
+        if ( tile.tileType == 'rock' || tile.tileType == 'bush' ){
+            if (
+                hero.x < (tile.ui.x + options.grid.tileSize) && (hero.x + options.grid.tileSize) > tile.ui.x &&
+                hero.y < (tile.ui.y + options.grid.tileSize) && (hero.y + options.grid.tileSize) > tile.ui.y
+            ) {
+                //push back to edge of block
+                if(hero.curDirection == 'u'){
+                    hero.y = tile.ui.y + options.grid.tileSize;
+                }
+                if(hero.curDirection == 'd'){
+                    hero.y = tile.ui.y - options.grid.tileSize;
+                }
+                if(hero.curDirection == 'r'){
+                    hero.x = tile.ui.x - options.grid.tileSize;
+                }
+                if(hero.curDirection == 'l'){
+                    hero.x = tile.ui.x + options.grid.tileSize;
+                }
+            }
+        }
+    }
+
+    /**
         EDGE TEST
         HERO ON EDGE
         MOVE TO SCREEN IF POSSILBE
@@ -200,23 +209,6 @@ var update = function (modifier) {
             hero.y = 0;
         }
     }
-
-    /* HERO TEST TILES */
-    /*
-    var j = 0; //tiles
-    var tile = null;
-    for( j = 0; j < world[currentScreenId].tiles.length; j++ ) {
-        tile = world[currentScreenId].tiles[j];
-        if ( tile.tileType == 'rock' || tile.tileType == 'bush' ){
-            if (
-                hero.x < (tile.ui.x + options.grid.tileSize) && (hero.x + options.grid.tileSize) > tile.ui.x &&
-                hero.y < (tile.ui.y + options.grid.tileSize) && (hero.y + options.grid.tileSize) > tile.ui.y
-            ) {
-                console.log('hero in block!');
-            }
-        }
-    }
-    */
 
     /* MONSTER UPDATE LOOP */
     // move enemies

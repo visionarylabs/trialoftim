@@ -170,8 +170,6 @@ var render = function () {
     ctx.fillText("cur: " + hero.curDirection, 10, 30);
     ctx.fillText("X: " + hero.x, 10, 50);
     ctx.fillText("Y: " + hero.y, 10, 70);
-    ctx.fillText("moveTargetX: " + hero.moveTargetX, 10, 90);
-    ctx.fillText("moveTargetY: " + hero.moveTargetY, 10, 110);
     
     //render screen state messages
     if(state.gameState == 'death'){

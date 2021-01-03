@@ -1,6 +1,6 @@
 <?php
     /**
-        Trial of Tim
+        The Trial of Tim
         Zelda style clone in javascript
         64px squares
         960 x 640

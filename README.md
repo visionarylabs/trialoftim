@@ -1,14 +1,17 @@
-/**
-    The Trial of Tim
-**/
+# The Trial of Tim
+Javascript Game Demo
+Top-Down Adventure World Game
+By Ben Borkowski @ Opal Games
 
-#nes zelda feature clone
+## top to do
+1. fix hero sprite for down / hair and sword
+1. fix world for edge testing when obstacle is on edge
+1. fix monster spawning to find empty spaces
+1. fix monster movement to not overlap
 
-#todo
+## to do
 1. add loader to screen builder
-1. fix tile obstacles and move snapping
 1. fix world and screen factory to read data
-1. screen builder
 1. world builder
 1. double check performance.now / delta / modifier
 1. fix media query / screen size
@@ -28,7 +31,9 @@
 1. google analytics
 1. clean up render to use OG tools
 
-#items
+## Ideas:
+
+### items
 1. bombs
 1. keys
 1. gems
@@ -45,7 +50,7 @@
 1. moths
 1. months dust
 
-#shops
+### shops
 1. bombs
 1. magic
 1. general

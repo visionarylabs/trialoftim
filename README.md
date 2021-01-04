@@ -4,15 +4,11 @@ Top-Down Adventure World Game
 By Ben Borkowski @ Opal Games
 
 ## top to do
-1. fix hero sprite for down / hair and sword
-1. fix world for edge testing when obstacle is on edge
+1. fix keyboard controls to keep all in list but only move last pressed
 1. fix monster spawning to find empty spaces
 1. fix monster movement to not overlap
 
 ## to do
-1. add loader to screen builder
-1. fix world and screen factory to read data
-1. world builder
 1. double check performance.now / delta / modifier
 1. fix media query / screen size
 1. hero death anim
@@ -30,6 +26,13 @@ By Ben Borkowski @ Opal Games
 1. google font
 1. google analytics
 1. clean up render to use OG tools
+
+## to do editor
+1. fix world for edge testing when obstacle is on edge
+1. fix world and screen factory to read data
+1. add loader to screen builder
+1. world builder
+
 
 ## Ideas:
 

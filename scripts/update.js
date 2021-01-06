@@ -6,7 +6,7 @@ var update = function (modifier) {
 
     //death screen state
     if(state.gameState == 'death' || state.gameState == 'win'){
-        if (27 in keysDown || 13 in keysDown) { // Player holding esc or return
+        if ( (keysDown[0] == 27) || (keysDown[0] == 13) ) { // Player holding esc or return
             resetGame();
         }
     }
@@ -45,7 +45,7 @@ var update = function (modifier) {
         heroPosSnap.y = heroPosSnap.yFloor;
     }
 
-    if (38 in keysDown || 87 in keysDown) { // Player holding up or w
+    if ((keysDown[0] == 38) || (keysDown[0] == 87)) { // Player holding up or w
         if(hero.attacking == false){
             if(hero.curDirection != 'u'){
                 hero.x = heroPosSnap.x;
@@ -54,7 +54,7 @@ var update = function (modifier) {
             hero.curDirection = 'u';
         }
     }
-    if (40 in keysDown || 83 in keysDown) { // Player holding down or s
+    if ((keysDown[0] == 40) || (keysDown[0] == 83)) { // Player holding down or s
         if(hero.attacking == false){
             if(hero.curDirection != 'd'){
                 hero.x = heroPosSnap.x;
@@ -66,7 +66,7 @@ var update = function (modifier) {
 
 
 
-    if (37 in keysDown || 65 in keysDown) { // Player holding left or a
+    if ((keysDown[0] == 37) || (keysDown[0] == 65)) { // Player holding left or a
         if(hero.attacking == false){
             if(hero.curDirection != 'l'){
                 hero.y = heroPosSnap.y;
@@ -75,7 +75,7 @@ var update = function (modifier) {
             hero.curDirection = 'l';
         }
     }
-    if (39 in keysDown || 68 in keysDown) { // Player holding right or d
+    if ((keysDown[0] == 39) || (keysDown[0] == 68)) { // Player holding right or d
         if(hero.attacking == false){
             if(hero.curDirection != 'r'){
                 hero.y = heroPosSnap.y;
@@ -87,7 +87,7 @@ var update = function (modifier) {
 
 
 
-    if (32 in keysDown || 16 in keysDown) { // Player holding space or shift
+    if ((keysDown[0] == 32) || (keysDown[0] == 16)) { // Player holding space or shift
         if(hero.attacking == false && hero.canAttack == true){
             hero.attack = true;
             hero.lastAttack = then;

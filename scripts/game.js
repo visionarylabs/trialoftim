@@ -65,7 +65,7 @@ var init = function(){
             console.log(data);
             worldData = data;
             world = new worldFactory(3,3);
-            console.log('here is the hard coded world');
+            console.log('here is the world from data');
             console.log(world);
             buildWorld();
             buildWorldData(worldData);
@@ -94,30 +94,23 @@ var main = function () {
 // * KEYBOARD CONTROLS
 ////////////
 
-var keysDown = {};
+var keysDown = [];
 
 addEventListener("keydown", function (e) {
     e.preventDefault();
-    clearMoveKeys();
-    keysDown[e.keyCode] = true;
+    if(!keysDown.includes(e.keyCode)){
+        keysDown.unshift(e.keyCode);
+    }
 }, false);
 
 addEventListener("keyup", function (e) {
     e.preventDefault();
-    delete keysDown[e.keyCode];
+    for(var i = keysDown.length-1; i>=0; i--){
+        if(keysDown[i] == e.keyCode){
+           keysDown.splice(i,1);
+        }
+    }
 }, false);
-
-//not used now
-var clearMoveKeys = function(){
-    delete keysDown[38];
-    delete keysDown[40];
-    delete keysDown[37];
-    delete keysDown[39];
-    delete keysDown[87];
-    delete keysDown[83];
-    delete keysDown[65];
-    delete keysDown[68];
-}
 
 ////////////
 // * GAME RESOURCES / IMAGES
@@ -181,7 +174,7 @@ var sword = {
     h: 10
 }
 
-var makeMonster = function(){
+var makeMonster = function(screenId){
     var monster = {
         x: 0,
         y: 0,
@@ -195,11 +188,34 @@ var makeMonster = function(){
         deathTime : null,
         hitBox : {w:40,h:40,offset:12},
     };
-    //todo fix get random tile
-    //was 1-15, 1-10
-    monster.x = ranomdNumberRange(3,13) * options.grid.tileSize - options.grid.tileSize;
-    monster.y = ranomdNumberRange(3,8) * options.grid.tileSize - options.grid.tileSize;
+
+    pos = getFreeTile(screenId);
+    monster.x = pos.x;
+    monster.y = pos.y;
     return monster;
+}
+
+var getFreeTile = function(screenId){
+    var pos = {};
+    var emptySpaces = [];
+    var loopLength = world[screenId].tiles.length;
+    for(var i = 0; i < loopLength; i++) {
+        var thisTile = world[screenId].tiles[i];
+        //get tiles aleast 3 spaces from edge
+        if(
+            thisTile.tileType == 'tile' && 
+            thisTile.col > 1 && 
+            thisTile.col < (options.grid.width - 2) && 
+            thisTile.row > 1 && 
+            thisTile.row < (options.grid.height - 2)
+        ){
+            emptySpaces.push(thisTile);
+        }
+    }
+    var placeTile = pickRandomArray(emptySpaces);
+    pos.x = placeTile.ui.x;
+    pos.y = placeTile.ui.y;
+    return pos;
 }
 
 ////////////
@@ -376,7 +392,7 @@ var resetMonster = function () {
     var screenId = getCurrentScreenId();
     var numberOfMonsters = world[screenId].contains.numberOfMonsters;
     for(i = 0; i < numberOfMonsters; i++){
-        monster = makeMonster();
+        monster = makeMonster(screenId);
         monsters.push(monster);
     }
 }
@@ -532,16 +548,26 @@ var getTileFromPos = function(pos){
 
     var currentScreenId = getCurrentScreenId();
     var tile = world[currentScreenId].tiles[j];
-    
-    console.log(j);
-    console.log(tile.tileType);
-    
-    if( tile.tileType == 'rock' || tile.tileType == 'bush' ){
-        console.log('can not move there');
-        return false;
-    }else{
-        console.log('CAN move there');
-        return true;
+
+    return tile;
+}
+
+/**
+    UTIL FUNCTIONS
+    from OG tools
+**/
+var pickRandomArray = function(array) {
+    var min = 0;
+    var count = array.length;
+    var max = count - 1;
+    var i = 0;
+    var card = null;
+    var pick = Math.floor(Math.random() * (max - min + 1)) + min;
+    for( i; i < count; i++ ){
+        if(i == pick){
+            card = array[i];
+            return card;
+        }
     }
 }
 

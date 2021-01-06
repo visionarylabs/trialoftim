@@ -5,11 +5,10 @@ By Ben Borkowski @ Opal Games
 
 ## top to do
 1. fix keyboard controls to keep all in list but only move last pressed
-1. fix monster spawning to find empty spaces
-1. fix monster movement to not overlap
 
 ## to do
 1. double check performance.now / delta / modifier
+1. fix monster movement to not overlap
 1. fix media query / screen size
 1. hero death anim
 1. monster spawn anim

@@ -167,9 +167,9 @@ var render = function () {
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
     ctx.fillText("points: " + state.points, 10, 10);
-    ctx.fillText("cur: " + hero.curDirection, 10, 30);
-    ctx.fillText("X: " + hero.x, 10, 50);
-    ctx.fillText("Y: " + hero.y, 10, 70);
+    //ctx.fillText("cur: " + hero.curDirection, 10, 30);
+    //ctx.fillText("X: " + hero.x, 10, 50);
+    //ctx.fillText("Y: " + hero.y, 10, 70);
     
     //render screen state messages
     if(state.gameState == 'death'){
